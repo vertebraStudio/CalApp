@@ -335,13 +335,20 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
                         </button>
                       )}
-                      <input
-                        type="number"
-                        required
-                        value={amount}
-                        onChange={(e) => setAmount(e.target.value)}
-                        className={`flex-1 bg-transparent text-slate-800 font-black outline-none text-center min-w-0 ${!['g', 'ml'].includes(unit) ? 'text-xl' : 'text-2xl py-1'}`}
-                      />
+                      <div className="flex-1 flex items-baseline justify-center gap-1 min-w-0">
+                        <input
+                          type="number"
+                          required
+                          value={amount}
+                          onChange={(e) => setAmount(e.target.value)}
+                          className={`bg-transparent text-slate-800 font-black outline-none min-w-0 ${!['g', 'ml'].includes(unit) ? 'text-xl w-full text-center' : 'text-2xl text-right w-20'}`}
+                        />
+                        {['g', 'ml'].includes(unit) && (
+                          <span className="text-xs font-bold text-slate-300 uppercase shrink-0">
+                            {unit}
+                          </span>
+                        )}
+                      </div>
                       {!['g', 'ml'].includes(unit) && (
                         <button
                           type="button"

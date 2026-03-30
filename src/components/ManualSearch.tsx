@@ -284,16 +284,16 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
                     </button>
                   )}
-                  <div className="flex flex-col items-center">
+                  <div className="flex items-baseline gap-1">
                     <input
                       type="number"
                       step="any"
-                      className={`bg-transparent text-center font-black text-[#7B61FF] outline-none ${unit === 'base' ? 'text-2xl w-24' : 'text-xl w-14'}`}
+                      className={`bg-transparent text-right font-black text-[#7B61FF] outline-none ${unit === 'base' ? 'text-2xl w-20' : 'text-xl w-14 text-center'}`}
                       value={amount}
                       onChange={e => setAmount(Number(e.target.value) || 0)}
                     />
                     {unit === 'base' && (
-                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-0.5">
+                      <span className="text-xs font-bold text-slate-300 uppercase tracking-widest min-w-[20px]">
                         {selectedFood.base_unit || 'g'}
                       </span>
                     )}
