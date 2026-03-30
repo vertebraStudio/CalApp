@@ -268,36 +268,40 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
                 </div>
               )}
 
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex flex-col">
-                  <span className="text-[13px] font-black text-slate-800">¿Cuánto has tomado?</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">
+              <div className="flex items-center justify-between gap-4 mb-4">
+                <div className="flex flex-col flex-1 min-w-0">
+                  <span className="text-[14px] font-black text-slate-800 leading-tight">¿Cuánto has tomado?</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase mt-1">
                     (Base: {selectedFood.serving_size_g ? `${selectedFood.serving_size_g}${selectedFood.base_unit || 'g'}` : `100${selectedFood.base_unit || 'g'}`})
                   </span>
                 </div>
-                <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200 transition-colors focus-within:border-[#7B61FF]">
+                <div className="flex items-center gap-2 bg-white px-2 py-1.5 rounded-2xl shadow-sm border border-slate-200 transition-colors focus-within:border-[#7B61FF] shrink-0">
                   <button
                     onClick={() => setAmount(prev => Math.max(0, prev - (unit === 'base' ? 10 : 1)))}
-                    className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
+                    className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
                   </button>
-                  <input
-                    type="number"
-                    step="any"
-                    className="bg-transparent text-center text-xl font-black text-[#7B61FF] w-16 outline-none"
-                    value={amount}
-                    onChange={e => setAmount(Number(e.target.value) || 0)}
-                  />
+                  <div className="flex flex-col items-center">
+                    <input
+                      type="number"
+                      step="any"
+                      className="bg-transparent text-center text-xl font-black text-[#7B61FF] w-14 outline-none"
+                      value={amount}
+                      onChange={e => setAmount(Number(e.target.value) || 0)}
+                    />
+                    {unit === 'base' && (
+                      <span className="text-[8px] font-black text-slate-300 uppercase -mt-1 tracking-tighter">
+                        {selectedFood.base_unit || 'g'}
+                      </span>
+                    )}
+                  </div>
                   <button
                     onClick={() => setAmount(prev => prev + (unit === 'base' ? 10 : 1))}
-                    className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
+                    className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                   </button>
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[20px]">
-                    {unit === 'base' ? (selectedFood.base_unit || 'g') : 'x'}
-                  </span>
                 </div>
               </div>
 
