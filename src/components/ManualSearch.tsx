@@ -189,8 +189,8 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
     const currentSalt = ((selectedFood.params_per_100g.macros.salt || 0) * ratio).toFixed(2)
 
     return (
-      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 pb-24 sm:pb-4 animate-fadeIn">
-        <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl flex flex-col overflow-hidden animate-slideUp">
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 pb-20 sm:pb-4 animate-fadeIn">
+        <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl flex flex-col max-h-[82vh] overflow-hidden animate-slideUp">
           {/* Top Bar */}
           <div className="p-6 border-b border-slate-50 shrink-0 flex items-center justify-between">
             <button onClick={() => setSelectedFood(null)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-2xl transition-all">
@@ -375,8 +375,8 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-12 sm:pt-4 pb-24 sm:pb-4 animate-fadeIn">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl flex flex-col max-h-[85vh] animate-slideUp">
+    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-12 sm:pt-4 pb-20 sm:pb-4 animate-fadeIn">
+      <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl flex flex-col max-h-[82vh] animate-slideUp">
 
         <div className="p-6 pb-0 shrink-0 flex items-center justify-between">
           <h2 className="text-xl font-black text-slate-800 tracking-tight">Buscar Alimento</h2>

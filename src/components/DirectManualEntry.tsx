@@ -214,8 +214,8 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6 animate-fadeIn pb-24 sm:pb-6">
-      <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl flex flex-col max-h-[90vh] animate-slideUp">
+    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6 animate-fadeIn pb-20 sm:pb-6">
+      <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl flex flex-col max-h-[82vh] overflow-hidden animate-slideUp">
 
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
