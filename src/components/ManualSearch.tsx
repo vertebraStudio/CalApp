@@ -21,9 +21,10 @@ function getDefaultMealType(): MealType {
 interface ManualSearchProps {
   onClose: () => void
   onFoodSelected: (data: Partial<MealEntryData>) => void
+  onEditFood: (food: any) => void
 }
 
-export default function ManualSearch({ onClose, onFoodSelected }: ManualSearchProps) {
+export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: ManualSearchProps) {
   const [query, setQuery] = useState('')
   const [brandQuery, setBrandQuery] = useState('')
   const [brands, setBrands] = useState<string[]>([])
@@ -201,7 +202,16 @@ export default function ManualSearch({ onClose, onFoodSelected }: ManualSearchPr
               <h3 className="font-black text-slate-800 text-lg leading-tight truncate px-2">{selectedFood.food_name}</h3>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedFood.brand_name || 'Genérico'}</p>
             </div>
-            <div className="w-10 h-10" /> {/* Spacer */}
+            
+            <button 
+              onClick={() => onEditFood(selectedFood)} 
+              className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-2xl transition-all"
+              title="Modificar características"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
@@ -265,15 +275,27 @@ export default function ManualSearch({ onClose, onFoodSelected }: ManualSearchPr
                     (Base: {selectedFood.serving_size_g ? `${selectedFood.serving_size_g}${selectedFood.base_unit || 'g'}` : `100${selectedFood.base_unit || 'g'}`})
                   </span>
                 </div>
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 focus-within:border-[#7B61FF] transition-colors">
+                <div className="flex items-center gap-3 bg-white px-3 py-2 rounded-xl shadow-sm border border-slate-200 transition-colors focus-within:border-[#7B61FF]">
+                  <button
+                    onClick={() => setAmount(prev => Math.max(0, prev - (unit === 'base' ? 10 : 1)))}
+                    className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
+                  </button>
                   <input
                     type="number"
                     step="any"
-                    className="bg-transparent text-right text-xl font-black text-[#7B61FF] w-20 outline-none"
+                    className="bg-transparent text-center text-xl font-black text-[#7B61FF] w-16 outline-none"
                     value={amount}
                     onChange={e => setAmount(Number(e.target.value) || 0)}
                   />
-                  <span className="text-xs font-bold text-slate-400">
+                  <button
+                    onClick={() => setAmount(prev => prev + (unit === 'base' ? 10 : 1))}
+                    className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                  </button>
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest min-w-[20px]">
                     {unit === 'base' ? (selectedFood.base_unit || 'g') : 'x'}
                   </span>
                 </div>

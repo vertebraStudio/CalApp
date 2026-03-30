@@ -195,6 +195,27 @@ export default function Navbar() {
             setShowManual(false); 
             await saveMeal(data);
           }} 
+          onEditFood={(food) => {
+            setShowManual(false);
+            setSharedData({
+              id: food.food_id,
+              food_name: food.food_name,
+              brand_name: food.brand_name,
+              calories: food.params_per_100g.calories,
+              macros: {
+                p: food.params_per_100g.macros.p,
+                c: food.params_per_100g.macros.c,
+                f: food.params_per_100g.macros.f,
+                sugar: food.params_per_100g.macros.sugar,
+                salt: food.params_per_100g.macros.salt
+              },
+              image_url: food.image_url,
+              serving_size_g: food.serving_size_g,
+              serving_unit: food.serving_unit,
+              base_unit: food.base_unit
+            });
+            setShowDirect(true);
+          }}
         />
       )}
       {showDirect && <DirectManualEntry initialData={sharedData} onClose={() => { setShowDirect(false); setSharedData(null); }} />}

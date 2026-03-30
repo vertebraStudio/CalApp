@@ -5,11 +5,22 @@ import { useAuth } from '@/context/AuthContext'
 interface DirectManualEntryProps {
   onClose: () => void
   initialData?: {
+    id?: string | number
     food_name: string
+    brand_name?: string
     calories: number
-    macros: { p: number; c: number; f: number }
+    macros: { 
+      p: number; 
+      c: number; 
+      f: number;
+      sugar?: number;
+      salt?: number;
+    }
     meal_type?: 'breakfast' | 'lunch' | 'snack' | 'dinner'
     image_url?: string | null
+    serving_size_g?: number
+    serving_unit?: string
+    base_unit?: string
   } | null
 }
 
@@ -50,13 +61,36 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
   useEffect(() => {
     if (initialData) {
       setName(initialData.food_name || '')
+      setBrand(initialData.brand_name || '')
       setCalories(initialData.calories?.toString() || '')
       setProtein(initialData.macros?.p?.toString() || '')
       setCarbs(initialData.macros?.c?.toString() || '')
       setFats(initialData.macros?.f?.toString() || '')
+      setSugar(initialData.macros?.sugar?.toString() || '')
+      setSalt(initialData.macros?.salt?.toString() || '')
       setImageUrl(initialData.image_url || null)
-      setAmount('1')
-      setUnit('ración')
+      
+      if (initialData.serving_size_g) {
+        setAmount('1')
+        setUnit(initialData.serving_unit || 'ración')
+        setServingWeight(initialData.serving_size_g.toString())
+      } else {
+        setAmount('100')
+        setUnit(initialData.base_unit || 'g')
+      }
+
+      // If editing existing, set base values for auto-recalc
+      if (initialData.id) {
+        setBaseValues({
+          calories: initialData.calories,
+          p: initialData.macros.p,
+          c: initialData.macros.c,
+          f: initialData.macros.f,
+          sugar: initialData.macros.sugar || 0,
+          salt: initialData.macros.salt || 0,
+          unitType: initialData.base_unit === 'ml' ? 'g' : 'g' // unitType is only g or unit in this component
+        })
+      }
     }
   }, [initialData])
 
@@ -139,7 +173,7 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
           created_by: user?.id
         })
 
-        const { error: globalErr } = await supabase.from('global_foods').insert([{
+        const foodData: any = {
           name: name.trim(),
           brand: brand.trim(),
           normalized_name: name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
@@ -155,7 +189,15 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
           serving_size_g: isServingUnit ? (sWeight || null) : null,
           serving_unit: isServingUnit ? unit : null,
           base_unit: (unit === 'ml' || unit === 'vaso') ? 'ml' : 'g'
-        }])
+        }
+
+        if (initialData?.id) {
+          foodData.id = initialData.id
+        }
+
+        const { error: globalErr } = await supabase
+          .from('global_foods')
+          .upsert([foodData])
 
         if (globalErr) {
           console.error('Error al guardar en comunidad:', globalErr)
@@ -178,8 +220,12 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
           <div>
-            <h3 className="text-xl font-black text-slate-800 tracking-tight">Registro Directo</h3>
-            <p className="text-xs font-semibold text-slate-400 mt-1">Nuevo alimento para la comunidad</p>
+            <h3 className="text-xl font-black text-slate-800 tracking-tight">
+              {initialData?.id ? 'Modificar Alimento' : 'Registro Directo'}
+            </h3>
+            <p className="text-xs font-semibold text-slate-400 mt-1">
+              {initialData?.id ? 'Actualizando datos de la comunidad' : 'Nuevo alimento para la comunidad'}
+            </p>
           </div>
           <button
             type="button"
@@ -276,13 +322,35 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
                 <div className="grid grid-cols-2 gap-3">
                   <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
                     <span className="text-[9px] font-bold text-slate-400 mb-2">Cantidad</span>
-                    <input
-                      type="number"
-                      required
-                      value={amount}
-                      onChange={(e) => setAmount(e.target.value)}
-                      className="w-full bg-transparent text-slate-800 font-black text-xl outline-none"
-                    />
+                    <div className="flex items-center justify-between gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setAmount(prev => {
+                          const val = parseFloat(prev) || 0;
+                          return Math.max(0, val - (['g', 'ml'].includes(unit) ? 10 : 1)).toString();
+                        })}
+                        className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-lg transition-all active:scale-90"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
+                      </button>
+                      <input
+                        type="number"
+                        required
+                        value={amount}
+                        onChange={(e) => setAmount(e.target.value)}
+                        className="flex-1 bg-transparent text-slate-800 font-black text-xl outline-none text-center min-w-0"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAmount(prev => {
+                          const val = parseFloat(prev) || 0;
+                          return (val + (['g', 'ml'].includes(unit) ? 10 : 1)).toString();
+                        })}
+                        className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-lg transition-all active:scale-90"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                      </button>
+                    </div>
                   </div>
                   <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
                     <span className="text-[9px] font-bold text-slate-400 mb-2">Unidad</span>
@@ -404,7 +472,7 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
               <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <span>Registrar en Comunidad</span>
+                <span>{initialData?.id ? 'Actualizar en Comunidad' : 'Registrar en Comunidad'}</span>
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
               </>
             )}
