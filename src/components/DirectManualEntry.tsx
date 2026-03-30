@@ -323,33 +323,37 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
                   <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
                     <span className="text-[9px] font-bold text-slate-400 mb-2">Cantidad</span>
                     <div className="flex items-center justify-between gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setAmount(prev => {
-                          const val = parseFloat(prev) || 0;
-                          return Math.max(0, val - (['g', 'ml'].includes(unit) ? 10 : 1)).toString();
-                        })}
-                        className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-lg transition-all active:scale-90"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
-                      </button>
+                      {!['g', 'ml'].includes(unit) && (
+                        <button
+                          type="button"
+                          onClick={() => setAmount(prev => {
+                            const val = parseFloat(prev) || 0;
+                            return Math.max(0, val - 1).toString();
+                          })}
+                          className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-lg transition-all active:scale-90"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
+                        </button>
+                      )}
                       <input
                         type="number"
                         required
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
-                        className="flex-1 bg-transparent text-slate-800 font-black text-xl outline-none text-center min-w-0"
+                        className={`flex-1 bg-transparent text-slate-800 font-black outline-none text-center min-w-0 ${!['g', 'ml'].includes(unit) ? 'text-xl' : 'text-2xl py-1'}`}
                       />
-                      <button
-                        type="button"
-                        onClick={() => setAmount(prev => {
-                          const val = parseFloat(prev) || 0;
-                          return (val + (['g', 'ml'].includes(unit) ? 10 : 1)).toString();
-                        })}
-                        className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-lg transition-all active:scale-90"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                      </button>
+                      {!['g', 'ml'].includes(unit) && (
+                        <button
+                          type="button"
+                          onClick={() => setAmount(prev => {
+                            const val = parseFloat(prev) || 0;
+                            return (val + 1).toString();
+                          })}
+                          className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-lg transition-all active:scale-90"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                        </button>
+                      )}
                     </div>
                   </div>
                   <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">

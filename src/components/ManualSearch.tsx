@@ -275,33 +275,37 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
                     (Base: {selectedFood.serving_size_g ? `${selectedFood.serving_size_g}${selectedFood.base_unit || 'g'}` : `100${selectedFood.base_unit || 'g'}`})
                   </span>
                 </div>
-                <div className="flex items-center gap-2 bg-white px-2 py-1.5 rounded-2xl shadow-sm border border-slate-200 transition-colors focus-within:border-[#7B61FF] shrink-0">
-                  <button
-                    onClick={() => setAmount(prev => Math.max(0, prev - (unit === 'base' ? 10 : 1)))}
-                    className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
-                  </button>
+                <div className={`flex items-center gap-2 bg-white transition-all shadow-sm border border-slate-200 focus-within:border-[#7B61FF] shrink-0 ${unit === 'base' ? 'px-4 py-3 rounded-2xl' : 'px-2 py-1.5 rounded-2xl'}`}>
+                  {unit !== 'base' && (
+                    <button
+                      onClick={() => setAmount(prev => Math.max(0, prev - 1))}
+                      className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
+                    </button>
+                  )}
                   <div className="flex flex-col items-center">
                     <input
                       type="number"
                       step="any"
-                      className="bg-transparent text-center text-xl font-black text-[#7B61FF] w-14 outline-none"
+                      className={`bg-transparent text-center font-black text-[#7B61FF] outline-none ${unit === 'base' ? 'text-2xl w-24' : 'text-xl w-14'}`}
                       value={amount}
                       onChange={e => setAmount(Number(e.target.value) || 0)}
                     />
                     {unit === 'base' && (
-                      <span className="text-[8px] font-black text-slate-300 uppercase -mt-1 tracking-tighter">
+                      <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mt-0.5">
                         {selectedFood.base_unit || 'g'}
                       </span>
                     )}
                   </div>
-                  <button
-                    onClick={() => setAmount(prev => prev + (unit === 'base' ? 10 : 1))}
-                    className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                  </button>
+                  {unit !== 'base' && (
+                    <button
+                      onClick={() => setAmount(prev => prev + 1)}
+                      className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                    </button>
+                  )}
                 </div>
               </div>
 
