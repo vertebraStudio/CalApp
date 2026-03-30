@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
-import type { AIAnalysis } from '@/types'
 
 interface DirectManualEntryProps {
   onClose: () => void
@@ -97,34 +96,6 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
     }
   };
 
-  // Handle Label Scanning (Ticket)
-  const handleScanLabel = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const publicUrl = await uploadImage(file);
-    if (!publicUrl) return;
-
-    try {
-      const { data, error: fnErr } = await supabase.functions.invoke('analyze-food', {
-        body: { image_url: publicUrl },
-      });
-      if (fnErr) throw fnErr;
-
-      const analysis = data as AIAnalysis;
-      setName(analysis.food_name || name);
-      setCalories(analysis.calories?.toString() || '0');
-      setProtein(analysis.macros.p?.toString() || '0');
-      setCarbs(analysis.macros.c?.toString() || '0');
-      setFats(analysis.macros.f?.toString() || '0');
-      setSugar((analysis.macros as any).sugar?.toString() || '0');
-      setSalt((analysis.macros as any).salt?.toString() || '0');
-      setBaseValues(null);
-    } catch (err) {
-      console.error('AI Scan Error:', err);
-      alert("Error al analizar la etiqueta con IA. Los datos se pueden introducir manualmente.");
-    }
-  };
 
   // Auto-recalculate when amount or baseValues change
   useEffect(() => {

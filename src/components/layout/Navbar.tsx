@@ -5,7 +5,6 @@ import ImageUpload from '../ImageUpload'
 import VoiceTextEntry from '../VoiceTextEntry'
 import DirectManualEntry from '../DirectManualEntry'
 import { useSaveMealEntry } from '@/hooks/useSaveMealEntry'
-import { useAuth } from '@/context/AuthContext'
 
 const navItemsStart = [
   {
@@ -44,7 +43,6 @@ const navItemsEnd = [
 ]
 
 export default function Navbar() {
-  const { user } = useAuth()
   const { saveMeal } = useSaveMealEntry()
   const [showManual, setShowManual] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
