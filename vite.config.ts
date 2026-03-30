@@ -24,8 +24,8 @@ export default defineConfig({
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',
-        scope: '/',
-        start_url: '/',
+        scope: '/CalApp/',
+        start_url: '/CalApp/',
         icons: [
           {
             src: 'pwa-192x192.png',
