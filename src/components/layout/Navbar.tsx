@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import ManualSearch from '../ManualSearch'
 import ImageUpload from '../ImageUpload'
 import VoiceTextEntry from '../VoiceTextEntry'
@@ -23,7 +23,7 @@ const navItemsStart = [
     icon: (active: boolean) => (
       <svg className={`w-6 h-6 ${active ? 'text-[#7B61FF]' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? 2.5 : 2}
-          d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2zm-9 6v4m0-4H7m4 0h4m-4-4V5" />
+          d="M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z M5 10h14 M9 6v2 M9 13v3" />
       </svg>
     ),
   },
@@ -43,6 +43,8 @@ const navItemsEnd = [
 ]
 
 export default function Navbar() {
+  const location = useLocation()
+  const isProfile = location.pathname === '/profile'
   const { saveMeal } = useSaveMealEntry()
   const [showManual, setShowManual] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
@@ -56,114 +58,132 @@ export default function Navbar() {
   return (
     <>
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-100 shadow-[0_-4px_24px_-4px_rgba(0,0,0,0.05)]">
-        <div className="flex items-center justify-between max-w-2xl mx-auto px-10 h-20 relative">
+        <div className="max-w-2xl mx-auto px-4 h-20 relative">
           
-          {/* Left Items (Hoy & Nevera) */}
-          <div className="flex w-[35%] justify-between">
-            {navItemsStart.map(({ to, label, icon }) => (
-              <NavLink key={to} to={to} end={to === '/'} className="flex flex-col items-center gap-1 group transition-all active:scale-95">
+          {/* 3-Column Grid for Symmetric Alignment: Nevera exactly below FAB (+) */}
+          <div className="grid grid-cols-3 w-full items-center h-full relative px-6">
+            
+            {/* Slot 1: Hoy */}
+            <div className="flex justify-center">
+              <NavLink to="/" end className="flex flex-col items-center gap-1 transition-all active:scale-95 group">
                 {({ isActive }) => (
                   <>
-                    {icon(isActive)}
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-[#7B61FF]' : 'text-slate-300'}`}>{label}</span>
+                    {navItemsStart[0].icon(isActive)}
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#7B61FF]' : 'text-slate-300'}`}>
+                      {navItemsStart[0].label}
+                    </span>
                   </>
                 )}
               </NavLink>
-            ))}
-          </div>
+            </div>
 
-          {/* Spacer for FAB */}
-          <div className="w-14" />
-
-          {/* Right Items (Perfil) */}
-          <div className="flex w-[35%] justify-center">
-            {navItemsEnd.map(({ to, label, icon }) => (
-              <NavLink key={to} to={to} className="flex flex-col items-center gap-1 group transition-all active:scale-95">
+            {/* Slot 2: Nevera (Centered exactly under the FAB at 50%) */}
+            <div className="flex justify-center">
+              <NavLink to="/nevera" className="flex flex-col items-center gap-1 transition-all active:scale-95 group">
                 {({ isActive }) => (
                   <>
-                    {icon(isActive)}
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-[#7B61FF]' : 'text-slate-300'}`}>{label}</span>
+                    {navItemsStart[1].icon(isActive)}
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#7B61FF]' : 'text-slate-300'}`}>
+                      {navItemsStart[1].label}
+                    </span>
                   </>
                 )}
               </NavLink>
-            ))}
-          </div>
+            </div>
 
-          {/* Floating FAB - Elevated 20px above the tray */}
-          <div className="absolute left-1/2 -translate-x-1/2 bottom-[100px] flex flex-col items-center z-[51]">
-            
-            {/* FAB Options (Radial) */}
-            {showPlusMenu && (
-              <div className="absolute top-1/2 left-1/2 w-0 h-0 z-0">
-                {/* Cámara */}
-                <button
-                  onClick={() => { setShowPlusMenu(false); setShowUpload(true) }}
-                  className="absolute flex flex-col items-center gap-1.5 group w-16 animate-fadeIn"
-                  style={{ transform: 'translate(-50%, -50%) translate(-95px, -20px)' }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-emerald-400 text-white flex items-center justify-center shadow-lg shadow-emerald-200 group-active:scale-90 transition-transform">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-black tracking-wide text-slate-600 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">Cámara</span>
-                </button>
+            {/* Slot 3: Perfil */}
+            <div className="flex justify-center">
+              <NavLink to="/profile" className="flex flex-col items-center gap-1 transition-all active:scale-95 group">
+                {({ isActive }) => (
+                  <>
+                    {navItemsEnd[0].icon(isActive)}
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#7B61FF]' : 'text-slate-300'}`}>
+                      {navItemsEnd[0].label}
+                    </span>
+                  </>
+                )}
+              </NavLink>
+            </div>
 
-                {/* Voz/Texto */}
-                <button
-                  onClick={() => { setShowPlusMenu(false); setShowVoice(true) }}
-                  className="absolute flex flex-col items-center gap-1.5 group w-16 animate-fadeIn"
-                  style={{ transform: 'translate(-50%, -50%) translate(-40px, -90px)', animationDelay: '50ms' }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-200 group-active:scale-90 transition-transform">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-black tracking-wide text-slate-600 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">Voz/Text</span>
-                </button>
-
-                {/* Buscador */}
-                <button
-                  onClick={() => { setShowPlusMenu(false); setShowManual(true) }}
-                  className="absolute flex flex-col items-center gap-1.5 group w-16 animate-fadeIn"
-                  style={{ transform: 'translate(-50%, -50%) translate(40px, -90px)', animationDelay: '100ms' }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-amber-400 text-white flex items-center justify-center shadow-lg shadow-amber-200 group-active:scale-90 transition-transform">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-black tracking-wide text-slate-600 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">Buscar</span>
-                </button>
-
-                {/* Manual Directo */}
-                <button
-                  onClick={() => { setShowPlusMenu(false); setShowDirect(true); setSharedData(null); }}
-                  className="absolute flex flex-col items-center gap-1.5 group w-16 animate-fadeIn"
-                  style={{ transform: 'translate(-50%, -50%) translate(95px, -20px)', animationDelay: '150ms' }}
-                >
-                  <div className="w-14 h-14 rounded-full bg-slate-800 text-white flex items-center justify-center shadow-lg shadow-slate-300 group-active:scale-90 transition-transform">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                  </div>
-                  <span className="text-[10px] font-black tracking-wide text-slate-600 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">Manual</span>
-                </button>
-              </div>
-            )}
-            
-            <button
-              onClick={() => setShowPlusMenu(!showPlusMenu)}
-              className={`relative z-10 w-16 h-16 rounded-full bg-[#7B61FF] text-white flex items-center justify-center shadow-xl shadow-purple-200 transition-all duration-300 active:scale-95 ${showPlusMenu ? 'rotate-45 bg-[#684DEC]' : ''}`}
-            >
-              <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-            </button>
           </div>
         </div>
       </nav>
+
+      {/* Floating FAB - Independent of the nav tray, centered at 50% */}
+      {!isProfile && (
+        <div className="fixed left-1/2 -translate-x-1/2 bottom-24 flex flex-col items-center z-[51]">
+          
+          {/* FAB Options (Radial) */}
+          {showPlusMenu && (
+            <div className="absolute top-1/2 left-1/2 w-0 h-0 z-0">
+              {/* Cámara */}
+              <button
+                onClick={() => { setShowPlusMenu(false); setShowUpload(true) }}
+                className="absolute flex flex-col items-center gap-1.5 group w-16 animate-fadeIn"
+                style={{ transform: 'translate(-50%, -50%) translate(-95px, -20px)' }}
+              >
+                <div className="w-14 h-14 rounded-full bg-emerald-400 text-white flex items-center justify-center shadow-lg shadow-emerald-200 group-active:scale-90 transition-transform">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  </svg>
+                </div>
+                <span className="text-[10px] font-black tracking-wide text-slate-600 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">Cámara</span>
+              </button>
+
+              {/* Voz/Texto */}
+              <button
+                onClick={() => { setShowPlusMenu(false); setShowVoice(true) }}
+                className="absolute flex flex-col items-center gap-1.5 group w-16 animate-fadeIn"
+                style={{ transform: 'translate(-50%, -50%) translate(-40px, -90px)', animationDelay: '50ms' }}
+              >
+                <div className="w-14 h-14 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-200 group-active:scale-90 transition-transform">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </div>
+                <span className="text-[10px] font-black tracking-wide text-slate-600 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">Voz/Text</span>
+              </button>
+
+              {/* Buscador */}
+              <button
+                onClick={() => { setShowPlusMenu(false); setShowManual(true) }}
+                className="absolute flex flex-col items-center gap-1.5 group w-16 animate-fadeIn"
+                style={{ transform: 'translate(-50%, -50%) translate(40px, -90px)', animationDelay: '100ms' }}
+              >
+                <div className="w-14 h-14 rounded-full bg-amber-400 text-white flex items-center justify-center shadow-lg shadow-amber-200 group-active:scale-90 transition-transform">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+                <span className="text-[10px] font-black tracking-wide text-slate-600 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">Buscar</span>
+              </button>
+
+              {/* Manual Directo */}
+              <button
+                onClick={() => { setShowPlusMenu(false); setShowDirect(true); setSharedData(null); }}
+                className="absolute flex flex-col items-center gap-1.5 group w-16 animate-fadeIn"
+                style={{ transform: 'translate(-50%, -50%) translate(95px, -20px)', animationDelay: '150ms' }}
+              >
+                <div className="w-14 h-14 rounded-full bg-slate-800 text-white flex items-center justify-center shadow-lg shadow-slate-300 group-active:scale-90 transition-transform">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                </div>
+                <span className="text-[10px] font-black tracking-wide text-slate-600 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded-full shadow-sm">Manual</span>
+              </button>
+            </div>
+          )}
+          
+          <button
+            onClick={() => setShowPlusMenu(!showPlusMenu)}
+            className={`relative z-10 w-16 h-16 rounded-full bg-[#7B61FF] text-white flex items-center justify-center transition-all duration-300 active:scale-95 ${showPlusMenu ? 'rotate-45 bg-[#684DEC]' : ''}`}
+          >
+            <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       {/* global Modals Triggered by FAB */}
       {showUpload && <ImageUpload onClose={() => setShowUpload(false)} onAnalysisComplete={(data: any) => { setShowUpload(false); setSharedData(data); setShowDirect(true); }} />}

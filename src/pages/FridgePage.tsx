@@ -302,10 +302,10 @@ export default function FridgePage() {
   const lowStockCount = items.filter(i => i.stock_amount <= i.low_stock_threshold).length
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-36">
+    <div className="min-h-screen bg-[#F8F9FE] -mx-4 -mt-6 pb-36">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-2xl mx-auto px-5 pt-12 pb-4">
+        <div className="max-w-2xl mx-auto px-4 pt-12 pb-4">
           <div className="flex items-start justify-between">
             <div>
               <h1 className="text-2xl font-black text-slate-800 tracking-tight">Mi Nevera 🧊</h1>
@@ -362,7 +362,7 @@ export default function FridgePage() {
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-5 pt-6 space-y-8">
+      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-8">
         {isLoading ? (
           <div className="flex flex-col items-center py-20 gap-4">
             <div className="w-10 h-10 border-4 border-[#7B61FF] border-t-transparent rounded-full animate-spin" />
