@@ -24,9 +24,12 @@ function PublicRoute() {
   return session ? <Navigate to="/" replace /> : <Outlet />
 }
 
+import ScrollToTop from '../components/layout/ScrollToTop'
+
 export default function AppRouter() {
   return (
     <HashRouter>
+      <ScrollToTop />
       <Routes>
         {/* Rutas públicas */}
         <Route element={<PublicRoute />}>

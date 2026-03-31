@@ -28,7 +28,7 @@ export default function LoginPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </div>
-          <h1 className="text-2xl font-bold text-white">NutriSnap</h1>
+          <h1 className="text-2xl font-bold text-white">Gordito</h1>
           <p className="text-slate-400 text-sm mt-1">Come bien, vive mejor</p>
         </div>
 

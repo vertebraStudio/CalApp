@@ -38,6 +38,7 @@ export default function ProfilePage() {
   const [macroP, setMacroP] = useState(30)
   const [macroC, setMacroC] = useState(40)
   const [macroF, setMacroF] = useState(30)
+  const [waterGoal, setWaterGoal] = useState(2.0)
   const [weightChanged, setWeightChanged] = useState(false)
   const [isEditing, setIsEditing] = useState(false)
 
@@ -110,6 +111,7 @@ export default function ProfilePage() {
       setMacroP(profile.macro_p_pct ?? 30)
       setMacroC(profile.macro_c_pct ?? 40)
       setMacroF(profile.macro_f_pct ?? 30)
+      setWaterGoal(profile.water_goal_liters || 2.0)
     }
   }, [profile])
 
@@ -136,7 +138,8 @@ export default function ProfilePage() {
         goal_intensity: goalIntensity,
         macro_p_pct: macroP,
         macro_c_pct: macroC,
-        macro_f_pct: macroF
+        macro_f_pct: macroF,
+        water_goal_liters: waterGoal
       })
 
       // Si el peso ha sido modificado, registrarlo en el historial
@@ -193,7 +196,7 @@ export default function ProfilePage() {
             <div className={`rounded-[32px] bg-slate-50 flex items-center justify-center relative shadow-inner transition-all duration-500 ${isEditing ? 'w-16 h-16 text-3xl mb-3' : 'w-24 h-24 text-5xl mb-4'}`}>
                {GENDERS.find(g => g.id === gender)?.icon || '👤'}
             </div>
-            <h1 className={`${isEditing ? 'text-lg' : 'text-2xl'} font-black text-slate-800 tracking-tighter transition-all duration-500`}>{username || 'Usuario NutriSnap'}</h1>
+            <h1 className={`${isEditing ? 'text-lg' : 'text-2xl'} font-black text-slate-800 tracking-tighter transition-all duration-500`}>{username || 'Usuario Gordito'}</h1>
             <p className="text-[9px] font-black text-slate-300 uppercase tracking-[0.2em] mb-6">{user?.email}</p>
           </div>
 
@@ -299,6 +302,33 @@ export default function ProfilePage() {
                     <button key={intensity} type="button" onClick={() => setGoalIntensity(intensity as any)} className={`py-3 px-1 rounded-xl text-[9px] font-black uppercase tracking-tight transition-all border-2 ${goalIntensity === intensity ? 'bg-amber-500 border-transparent text-white shadow-md shadow-amber-200' : 'bg-slate-50 border-transparent text-slate-400'}`}>{intensity}</button>
                   ))}
                 </div>
+              </div>
+
+              <div>
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-8 h-8 rounded-xl bg-sky-50 flex items-center justify-center text-lg">💧</div>
+                  <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Meta de Agua</h2>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  {[1.5, 2.0, 2.5, 3.0].map((liters) => (
+                    <button 
+                      key={liters} 
+                      type="button" 
+                      onClick={() => setWaterGoal(liters)} 
+                      className={`py-3 rounded-xl text-[10px] font-black transition-all border-2 ${waterGoal === liters ? 'bg-sky-500 border-transparent text-white shadow-md shadow-sky-200 scale-[1.02]' : 'bg-slate-50 border-transparent text-slate-400 hover:bg-slate-100'}`}
+                    >
+                      {liters.toFixed(1)}L
+                    </button>
+                  ))}
+                </div>
+                <input 
+                  type="number" 
+                  step="0.1" 
+                  className="mt-3 w-full bg-slate-50 border-2 border-transparent focus:border-sky-200 text-slate-800 p-3 rounded-xl font-black text-center text-sm outline-none" 
+                  value={waterGoal} 
+                  onChange={e => setWaterGoal(Number(e.target.value))} 
+                  placeholder="Personalizado (L)"
+                />
               </div>
 
               <div>

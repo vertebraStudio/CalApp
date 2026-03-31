@@ -73,6 +73,15 @@
   animation: slideUp 0.3s ease-out forwards;
 }
 
+@keyframes popIn {
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  100% { transform: translate(-50%, -50%) translate(var(--tx, 0px), var(--ty, 0px)) scale(1); opacity: 1; }
+}
+
+.animate-popIn {
+  animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
 /* Scrollbar personalizado si no es no-scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

@@ -1,4 +1,4 @@
-// Tipos compartidos de la aplicación NutriSnap
+// Tipos compartidos de la aplicación Gordito
 
 export interface Profile {
   id: string
@@ -14,6 +14,13 @@ export interface Profile {
   macro_p_pct?: number
   macro_c_pct?: number
   macro_f_pct?: number
+  water_goal_liters: number
+}
+
+export interface WaterLog {
+  user_id: string
+  date: string
+  ml_consumed: number
 }
 
 export interface Macros {

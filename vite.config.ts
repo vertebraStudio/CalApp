@@ -16,13 +16,31 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'NutriSnap',
-        short_name: 'NutriSnap',
+        name: 'Gordito',
+        short_name: 'Gordito',
         description: 'Planificador de comidas y calculadora de calorías con IA',
         theme_color: '#16a34a',
         background_color: '#0f172a',
         display: 'standalone',
         orientation: 'portrait',
+        icons: [
+          {
+            src: '/GorditoCaratula.png',
+            sizes: '192x192',
+            type: 'image/png'
+          },
+          {
+            src: '/GorditoCaratula.png',
+            sizes: '512x512',
+            type: 'image/png'
+          },
+          {
+            src: '/GorditoCaratula.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any maskable'
+          }
+        ]
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
