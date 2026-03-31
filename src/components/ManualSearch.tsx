@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/context/AuthContext'
 import type { MealType } from '@/types'
 import type { MealEntryData } from '@/hooks/useSaveMealEntry'
 
@@ -25,10 +26,12 @@ interface ManualSearchProps {
 }
 
 export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: ManualSearchProps) {
+  const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [brandQuery, setBrandQuery] = useState('')
   const [brands, setBrands] = useState<string[]>([])
   const [results, setResults] = useState<any[]>([])
+  const [recentMeals, setRecentMeals] = useState<any[]>([])
   const [loadingSearch, setLoadingSearch] = useState(false)
 
   const [selectedFood, setSelectedFood] = useState<any | null>(null)
@@ -52,6 +55,33 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
     }
     loadBrands()
   }, [])
+
+  // Fetch recent meals
+  useEffect(() => {
+    if (!user) return
+    async function loadRecent() {
+      const { data, error } = await supabase
+        .from('meals')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(30)
+
+      if (!error && data) {
+        // Unique by name
+        const unique = []
+        const names = new Set()
+        for (const m of data) {
+          if (!names.has(m.name)) {
+            names.add(m.name)
+            unique.push(m)
+          }
+        }
+        setRecentMeals(unique.slice(0, 10))
+      }
+    }
+    loadRecent()
+  }, [user])
   useEffect(() => {
     if (!query.trim() && !brandQuery.trim()) {
       setResults([])
@@ -278,7 +308,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
                 <div className={`flex items-center gap-2 bg-white transition-all shadow-sm border border-slate-200 focus-within:border-[#7B61FF] shrink-0 ${unit === 'base' ? 'px-4 py-3 rounded-2xl' : 'px-2 py-1.5 rounded-2xl'}`}>
                   {unit !== 'base' && (
                     <button
-                      onClick={() => setAmount(prev => Math.max(0, prev - 1))}
+                      onClick={() => setAmount((prev: number) => Math.max(0, prev - 1))}
                       className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
@@ -300,7 +330,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
                   </div>
                   {unit !== 'base' && (
                     <button
-                      onClick={() => setAmount(prev => prev + 1)}
+                      onClick={() => setAmount((prev: number) => prev + 1)}
                       className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
@@ -414,7 +444,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
               className="w-full bg-slate-50 text-slate-800 pl-12 pr-10 py-4 rounded-2xl font-bold text-xs border-2 border-transparent focus:border-[#7B61FF]/30 focus:bg-white transition-all outline-none appearance-none cursor-pointer"
             >
               <option value="">Todas las marcas</option>
-              {brands.map(brand => (
+              {brands.map((brand: string) => (
                 <option key={brand} value={brand}>{brand}</option>
               ))}
             </select>
@@ -431,7 +461,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
               <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Consultando base de datos...</p>
             </div>
           ) : results.length > 0 ? (
-            results.map((food) => (
+            results.map((food: any) => (
               <button
                 key={food.food_id}
                 onClick={() => setSelectedFood(food)}
@@ -473,6 +503,46 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
                 <span>Añadir alimento nuevo</span>
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
               </button>
+            </div>
+          ) : query.length === 0 && recentMeals.length > 0 ? (
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 px-1">
+                <span className="text-xl">🕒</span>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Consumidos recientemente</h4>
+              </div>
+              <div className="space-y-2">
+                {recentMeals.map((meal: any) => (
+                  <button
+                    key={meal.id}
+                    onClick={() => onFoodSelected({
+                      food_name: meal.name,
+                      calories: meal.calories,
+                      macros: {
+                        p: meal.protein,
+                        c: meal.carbs,
+                        f: meal.fats,
+                        sugar: meal.sugar,
+                        salt: meal.salt
+                      },
+                      meal_type: selectedMealType,
+                      image_url: meal.image_url
+                    })}
+                    className="w-full text-left p-4 bg-slate-50/50 hover:bg-slate-100/80 rounded-2xl transition-all border border-transparent hover:border-slate-200 group flex items-start justify-between"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-slate-800 text-sm truncate">{meal.name}</span>
+                      </div>
+                      <p className="text-[10px] text-slate-400 font-bold truncate uppercase tracking-widest">
+                        {meal.calories} kcal · {meal.protein}P / {meal.carbs}C / {meal.fats}F
+                      </p>
+                    </div>
+                    <div className="ml-4 w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#7B61FF] group-hover:scale-110 shadow-sm transition-all">
+                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="bg-slate-50/50 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-4 border border-dashed border-slate-100">

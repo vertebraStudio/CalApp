@@ -41,9 +41,8 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
 
   // Scanning states
   const fileRef = useRef<HTMLInputElement>(null)
-  const [isScanning, setIsScanning] = useState(false)
-
-  // Portion Size states
+  const [scanState, setScanState] = useState<'idle' | 'uploading' | 'analyzing' | 'done' | 'error'>('idle')
+  const [scanError, setScanError] = useState<string | null>(null)
   const [amount, setAmount] = useState('100')
   const [unit, setUnit] = useState('g')
   const [servingWeight, setServingWeight] = useState('')
@@ -94,39 +93,133 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
     }
   }, [initialData])
 
-  // Unified Upload Handler
-  const uploadImage = async (file: File) => {
+  // AI Label Scan Handler
+  const handleLabelScan = async (file: File) => {
+    if (!user) return
+    setScanState('uploading')
+    setScanError(null)
+    try {
+      const ext = file.name.split('.').pop()
+      const fileName = `${crypto.randomUUID()}.${ext}`
+      const path = `${user.id}/${fileName}`
+
+      const { error: uploadErr } = await supabase.storage
+        .from('food-images')
+        .upload(path, file, { cacheControl: '3600', upsert: true })
+
+      if (uploadErr) throw new Error(`Error al subir imagen: ${uploadErr.message}`)
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('food-images')
+        .getPublicUrl(path)
+
+      setScanState('analyzing')
+
+      const { data, error: fnErr } = await supabase.functions.invoke('analyze-food', {
+        body: { image_url: publicUrl, mode: 'label' },
+      })
+
+      if (fnErr) {
+        console.error('Full Edge Function Error:', fnErr)
+        let msg = fnErr.message
+        try {
+          // FunctionsHttpError contains the response body
+          const body = await fnErr.context.json()
+          if (body?.error) msg = body.error
+        } catch (e) {
+          console.error('Failed to parse error body:', e)
+        }
+        throw new Error(`Análisis fallido: ${msg}`)
+      }
+
+      if (!data) throw new Error('No se recibió respuesta del servidor de análisis.')
+      
+      const result = data as {
+        food_name: string
+        brand: string
+        calories_per_100g: number
+        protein_per_100g: number
+        carbs_per_100g: number
+        fats_per_100g: number
+        sugar_per_100g: number
+        salt_per_100g: number
+        serving_size_g: number | null
+        serving_unit: string
+        confidence: number
+      }
+
+      // Only throw if absolutely nothing was found or returned
+      if (!result.food_name && !result.calories_per_100g) {
+        throw new Error('No se pudo extraer información legible. Intenta con una foto más clara.')
+      }
+
+      // Do NOT overwrite name or brand from the label scan
+      // if (result.food_name) setName(result.food_name)
+      // if (result.brand) setBrand(result.brand)
+
+      if (result.serving_size_g && result.serving_unit) {
+        // Has serving info: show per-serving values
+        const ratio = result.serving_size_g / 100
+        setAmount('1')
+        setUnit(result.serving_unit)
+        setServingWeight(result.serving_size_g.toString())
+        setCalories(Math.round(result.calories_per_100g * ratio).toString())
+        setProtein(Number((result.protein_per_100g * ratio).toFixed(1)).toString())
+        setCarbs(Number((result.carbs_per_100g * ratio).toFixed(1)).toString())
+        setFats(Number((result.fats_per_100g * ratio).toFixed(1)).toString())
+        setSugar(Number((result.sugar_per_100g * ratio).toFixed(1)).toString())
+        setSalt(Number((result.salt_per_100g * ratio).toFixed(2)).toString())
+        // Enable auto-recalc from serving base
+        setBaseValues({
+          calories: result.calories_per_100g * ratio,
+          p: result.protein_per_100g * ratio,
+          c: result.carbs_per_100g * ratio,
+          f: result.fats_per_100g * ratio,
+          sugar: result.sugar_per_100g * ratio,
+          salt: result.salt_per_100g * ratio,
+          unitType: 'g'
+        })
+      } else {
+        // No serving: show per-100g values directly
+        setAmount('100')
+        setUnit('g')
+        setServingWeight('')
+        setCalories(Math.round(result.calories_per_100g).toString())
+        setProtein(result.protein_per_100g.toString())
+        setCarbs(result.carbs_per_100g.toString())
+        setFats(result.fats_per_100g.toString())
+        setSugar(result.sugar_per_100g.toString())
+        setSalt(result.salt_per_100g.toString())
+        setBaseValues(null)
+      }
+
+      // Do NOT set image URL for label scans
+      // setImageUrl(publicUrl) 
+      setScanState('done')
+    } catch (err) {
+      console.error('Error en escaneo IA:', err)
+      setScanError(err instanceof Error ? err.message : 'Error desconocido')
+      setScanState('error')
+    }
+  }
+
+  // Cover photo upload (separate from AI scan)
+  const uploadCoverImage = async (file: File) => {
     if (!user) return null;
-    setIsScanning(true);
     try {
       const ext = file.name.split('.').pop();
       const fileName = `${crypto.randomUUID()}.${ext}`;
       const path = `${user.id}/${fileName}`;
-
-      console.log('Iniciando subida de imagen:', path);
-
       const { error: uploadErr } = await supabase.storage
         .from('food-images')
         .upload(path, file, { cacheControl: '3600', upsert: true });
-
-      if (uploadErr) {
-        console.error('Error al subir a Storage:', uploadErr);
-        alert(`Error al subir imagen: ${uploadErr.message}`);
-        return null;
-      }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('food-images')
-        .getPublicUrl(path);
-
-      console.log('Imagen subida con éxito. URL:', publicUrl);
+      if (uploadErr) { console.error('Error subiendo portada:', uploadErr); return null; }
+      const { data: { publicUrl } } = supabase.storage.from('food-images').getPublicUrl(path);
       setImageUrl(publicUrl);
       return publicUrl;
     } catch (err) {
-      console.error('Error inesperado en uploadImage:', err);
+      console.error('Error inesperado:', err);
       return null;
-    } finally {
-      setIsScanning(false);
     }
   };
 
@@ -250,19 +343,13 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
               >
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
                   const file = e.target.files?.[0];
-                  if (file) uploadImage(file);
+                  if (file) uploadCoverImage(file);
                 }} />
                 <div className="w-16 h-16 bg-white rounded-3xl flex items-center justify-center text-3xl shadow-sm group-hover:scale-110 transition-transform">📸</div>
                 <div className="text-center">
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Foto del Producto</p>
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Foto de Portada</p>
                   <p className="text-[10px] text-slate-300 font-bold mt-1">Añade una carátula para la comunidad</p>
                 </div>
-                {isScanning && (
-                  <div className="absolute inset-0 bg-white/90 rounded-[2.5rem] flex flex-col items-center justify-center gap-2 animate-fadeIn z-10">
-                    <div className="w-8 h-8 border-4 border-[#7B61FF] border-t-transparent rounded-full animate-spin" />
-                    <span className="text-[10px] font-black uppercase text-[#7B61FF]">Subiendo...</span>
-                  </div>
-                )}
               </div>
             ) : (
               <div className="relative rounded-[2.5rem] overflow-hidden h-48 group shadow-2xl border-4 border-white">
@@ -297,19 +384,83 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
                 className="w-full bg-slate-50 text-slate-800 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest placeholder:text-slate-300 border-2 border-transparent focus:border-slate-100 focus:bg-white transition-all outline-none"
               />
 
-              {/* Optional AI Scan Button */}
+              {/* AI Label Scan Button */}
+              {/* Hidden input specifically for AI scan */}
+              <input
+                id="ai-scan-input"
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleLabelScan(file);
+                  // Reset value so same file can be picked again
+                  e.target.value = '';
+                }}
+              />
+
+              {/* Scan State Overlay */}
+              {(scanState === 'uploading' || scanState === 'analyzing') && (
+                <div className="bg-[#7B61FF]/5 border-2 border-[#7B61FF]/20 rounded-3xl p-5 flex flex-col items-center gap-3 animate-fadeIn">
+                  <div className="w-10 h-10 border-4 border-[#7B61FF] border-t-transparent rounded-full animate-spin" />
+                  <div className="text-center">
+                    <p className="text-xs font-black text-[#7B61FF] uppercase tracking-widest">
+                      {scanState === 'uploading' ? 'Subiendo imagen...' : 'Analizando etiqueta con IA ✨'}
+                    </p>
+                    <p className="text-[9px] text-slate-400 font-bold mt-1">
+                      {scanState === 'analyzing' && 'Extrayendo valores nutricionales por 100g...'}
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {scanState === 'done' && (
+                <div className="bg-emerald-50 border-2 border-emerald-200 rounded-3xl px-5 py-3 flex items-center gap-3 animate-fadeIn">
+                  <span className="text-2xl">✅</span>
+                  <div>
+                    <p className="text-xs font-black text-emerald-700 uppercase tracking-widest">¡Etiqueta leída!</p>
+                    <p className="text-[9px] text-emerald-500 font-bold mt-0.5">Campos rellenados automáticamente. Comprueba y ajusta si es necesario.</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setScanState('idle')}
+                    className="ml-auto p-1.5 text-emerald-400 hover:text-emerald-600"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
+                  </button>
+                </div>
+              )}
+
+              {scanState === 'error' && (
+                <div className="bg-red-50 border-2 border-red-100 rounded-3xl px-5 py-3 flex items-start gap-3 animate-fadeIn">
+                  <span className="text-xl mt-0.5">⚠️</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black text-red-600 uppercase tracking-widest">Error al analizar</p>
+                    <p className="text-[9px] text-red-400 font-bold mt-0.5 leading-relaxed">{scanError}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setScanState('idle'); document.getElementById('ai-scan-input')?.click() }}
+                    className="shrink-0 text-[9px] font-black text-red-500 uppercase tracking-widest bg-red-100 px-3 py-1.5 rounded-xl hover:bg-red-200 transition-colors"
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              )}
+
               <button
                 type="button"
-                onClick={() => fileRef.current?.click()}
-                className="w-full bg-slate-50/50 hover:bg-slate-100/50 border border-slate-100 py-3 rounded-xl flex items-center justify-center gap-2 group transition-all active:scale-[0.98]"
+                disabled={scanState === 'uploading' || scanState === 'analyzing'}
+                onClick={() => document.getElementById('ai-scan-input')?.click()}
+                className="w-full bg-gradient-to-r from-[#7B61FF] to-[#A78BFA] hover:from-[#684DEC] hover:to-[#9061F9] disabled:opacity-50 disabled:cursor-not-allowed text-white py-3.5 rounded-2xl flex items-center justify-center gap-2.5 group transition-all active:scale-[0.98] shadow-lg shadow-purple-200"
               >
-                <svg className="w-4 h-4 text-slate-400 group-hover:text-[#7B61FF] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-black uppercase text-slate-400 tracking-widest group-hover:text-slate-600">Autocompletar con ticket</span>
-                  <span className="text-[8px] font-bold text-slate-300 group-hover:text-slate-400">(Opcional)</span>
+                <span className="text-lg">✨</span>
+                <div className="flex flex-col items-start">
+                  <span className="text-xs font-black uppercase tracking-widest leading-tight">Escanear etiqueta nutricional</span>
+                  <span className="text-[8px] font-bold text-white/70 leading-tight">Autocompletar con IA</span>
                 </div>
+                <svg className="w-4 h-4 ml-auto opacity-70 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
               </button>
 
               {/* Porción de Referencia */}
