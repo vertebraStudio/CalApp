@@ -372,7 +372,7 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nombre del alimento..."
-                  className="w-full bg-slate-50 text-slate-800 px-4 py-4 rounded-2xl font-black text-sm uppercase tracking-wider placeholder:text-slate-300 border-2 border-transparent focus:border-[#7B61FF]/10 focus:bg-white transition-all outline-none"
+                  className="w-full bg-slate-50 text-slate-800 p-4 rounded-2xl font-black text-base text-center border-2 border-transparent focus:border-[#7B61FF]/10 focus:bg-white transition-all outline-none"
                 />
               </div>
 
@@ -381,7 +381,7 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
                 placeholder="Marca (Ej: Hacendado, Danone...)"
-                className="w-full bg-slate-50 text-slate-800 px-4 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest placeholder:text-slate-300 border-2 border-transparent focus:border-slate-100 focus:bg-white transition-all outline-none"
+                className="w-full bg-slate-50 text-slate-800 p-4 rounded-2xl font-black text-base text-center border-2 border-transparent focus:border-slate-100 focus:bg-white transition-all outline-none"
               />
 
               {/* AI Label Scan Button */}
@@ -555,10 +555,11 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
                 </div>
                 <input
                   type="number"
+                  inputMode="decimal"
                   required
                   value={calories}
                   onChange={(e) => handleManualCal(e.target.value)}
-                  className="w-full bg-white text-slate-800 px-4 py-3 rounded-2xl font-black text-3xl border-2 border-transparent focus-within:border-[#7B61FF]/10 shadow-sm outline-none text-center"
+                  className="w-full bg-white text-slate-800 p-3 rounded-xl font-black text-base text-center border border-slate-100 focus:border-[#FF5C00]/20 focus:ring-4 focus:ring-[#FF5C00]/5 transition-all outline-none"
                 />
               </div>
 
