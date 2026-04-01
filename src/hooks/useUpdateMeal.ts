@@ -2,54 +2,27 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { useQueryClient } from '@tanstack/react-query'
+import type { MealEntryData } from './useSaveMealEntry'
 
-export interface MealEntryData {
-  food_name: string
-  calories: number
-  macros: {
-    p: number
-    c: number
-    f: number
-    sugar?: number
-    salt?: number
-  }
-  meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner'
-  image_url?: string | null
-  // Base values for precision editing
-  base_values?: {
-    calories: number
-    p: number
-    c: number
-    f: number
-    sugar?: number
-    salt?: number
-    serving_size_g?: number
-    serving_unit?: string
-    base_unit?: string
-    is_liquid?: boolean
-    friendly_measures?: import('@/types').FriendlyMeasure[]
-  }
-}
-
-export function useSaveMealEntry() {
+export function useUpdateMeal() {
   const { user } = useAuth()
   const queryClient = useQueryClient()
-  const [isSaving, setIsSaving] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const saveMeal = async (data: MealEntryData) => {
+  const updateMeal = async (mealId: string, data: MealEntryData) => {
     if (!user) {
-      setError('Debes iniciar sesión para guardar comidas')
+      setError('Debes iniciar sesión para editar comidas')
       return false
     }
 
-    setIsSaving(true)
+    setIsUpdating(true)
     setError(null)
 
     try {
-      const { error: dbError } = await supabase.from('meals').insert([
-        {
-          user_id: user.id,
+      const { error: dbError } = await supabase
+        .from('meals')
+        .update({
           name: data.food_name,
           calories: data.calories,
           protein: data.macros.p,
@@ -59,7 +32,8 @@ export function useSaveMealEntry() {
           salt: data.macros.salt ?? 0,
           meal_type: data.meal_type,
           image_url: data.image_url || null,
-          // New base values columns
+          // Update base values if provided (usually they don't change during edit, 
+          // but we include them for completeness or in case they were missing)
           base_calories: data.base_values?.calories,
           base_protein: data.base_values?.p,
           base_carbs: data.base_values?.c,
@@ -69,24 +43,23 @@ export function useSaveMealEntry() {
           serving_size_g: data.base_values?.serving_size_g,
           serving_unit: data.base_values?.serving_unit,
           base_unit: data.base_values?.base_unit,
-          is_liquid: data.base_values?.is_liquid,
-          friendly_measures: data.base_values?.friendly_measures,
-        },
-      ])
+        })
+        .eq('id', mealId)
+        .eq('user_id', user.id)
 
       if (dbError) throw dbError
 
-      // Invalidate existing queries to trigger a refetch on the dashboard
+      // Invalidate both meals and any planners that might be showing this meal
       await queryClient.invalidateQueries({ queryKey: ['meals'] })
       return true
     } catch (err: any) {
-      console.error('Error saving meal:', err)
-      setError(err.message || 'Error al guardar la comida')
+      console.error('Error updating meal:', err)
+      setError(err.message || 'Error al actualizar la comida')
       return false
     } finally {
-      setIsSaving(false)
+      setIsUpdating(false)
     }
   }
 
-  return { saveMeal, isSaving, error }
+  return { updateMeal, isUpdating, error }
 }

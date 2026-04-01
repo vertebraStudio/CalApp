@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext'
 
 interface DirectManualEntryProps {
   onClose: () => void
+  onSuccess?: (foodId: string, foodData: any) => void
   initialData?: {
     id?: string | number
     food_name: string
@@ -25,12 +26,13 @@ interface DirectManualEntryProps {
 }
 
 
-export default function DirectManualEntry({ onClose, initialData }: DirectManualEntryProps) {
+export default function DirectManualEntry({ onClose, onSuccess, initialData }: DirectManualEntryProps) {
   const { user } = useAuth()
   const [isSaving, setIsSaving] = useState(false)
 
   const [name, setName] = useState('')
   const [brand, setBrand] = useState('')
+  const [categoria, setCategoria] = useState<string>('Verduras')
   const [calories, setCalories] = useState('')
   const [protein, setProtein] = useState('')
   const [carbs, setCarbs] = useState('')
@@ -38,6 +40,12 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
   const [sugar, setSugar] = useState('')
   const [salt, setSalt] = useState('')
   const [imageUrl, setImageUrl] = useState<string | null>(null)
+
+  const CATEGORIES = [
+    'Verduras', 'Frutas', 'Snacks', 'Carne', 'Pescado', 'Cereales', 
+    'Frutos Secos', 'Lácteos', 'Legumbres', 'Bebidas', 'Platos Preparados', 
+    'Congelados', 'Panadería'
+  ]
 
   // Scanning states
   const fileRef = useRef<HTMLInputElement>(null)
@@ -61,6 +69,9 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
     if (initialData) {
       setName(initialData.food_name || '')
       setBrand(initialData.brand_name || '')
+      if ((initialData as any).categoria) {
+        setCategoria((initialData as any).categoria)
+      }
       setCalories(initialData.calories?.toString() || '')
       setProtein(initialData.macros?.p?.toString() || '')
       setCarbs(initialData.macros?.c?.toString() || '')
@@ -269,6 +280,7 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
         const foodData: any = {
           name: name.trim(),
           brand: brand.trim(),
+          categoria: categoria,
           normalized_name: name.trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
           calories_per_100g: Number((parseFloat(calories) * factor).toFixed(0)),
           protein_per_100g: Number((parseFloat(protein) * factor).toFixed(1)),
@@ -288,14 +300,18 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
           foodData.id = initialData.id
         }
 
-        const { error: globalErr } = await supabase
+        const { data: globalData, error: globalErr } = await supabase
           .from('global_foods')
           .upsert([foodData])
+          .select()
 
         if (globalErr) {
           console.error('Error al guardar en comunidad:', globalErr)
           alert(`Error al guardar: ${globalErr.message}`)
         } else {
+          if (onSuccess && globalData?.[0]) {
+            onSuccess(globalData[0].id, globalData[0])
+          }
           onClose()
         }
       } catch (err) {
@@ -383,6 +399,23 @@ export default function DirectManualEntry({ onClose, initialData }: DirectManual
                 placeholder="Marca (Ej: Hacendado, Danone...)"
                 className="w-full bg-slate-50 text-slate-800 p-4 rounded-2xl font-black text-base text-center border-2 border-transparent focus:border-slate-100 focus:bg-white transition-all outline-none"
               />
+
+              <div className="bg-slate-50 p-4 rounded-2xl border-2 border-transparent focus-within:border-slate-100 focus-within:bg-white transition-all">
+                <div className="flex items-center justify-between mb-2 px-1">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Categoría del Alimento</span>
+                  <span className="text-[8px] font-black text-[#7B61FF] bg-[#7B61FF]/10 px-2 py-0.5 rounded-full">OBLIGATORIO</span>
+                </div>
+                <select 
+                  required
+                  value={categoria}
+                  onChange={(e) => setCategoria(e.target.value)}
+                  className="w-full bg-transparent text-slate-800 font-black text-base outline-none cursor-pointer appearance-none capitalize pl-1"
+                >
+                  {CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
 
               {/* AI Label Scan Button */}
               {/* Hidden input specifically for AI scan */}

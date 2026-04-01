@@ -1,20 +1,6 @@
-import { useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { useFridgeItems, FRIDGE_CATEGORIES } from '@/hooks/useFridgeItems'
-import type { FridgeItem } from '@/hooks/useFridgeItems'
-import ShoppingEntry from '@/components/ShoppingEntry'
-
-// --- Helper: Categoría Icono ---
-const CATEGORY_ICONS: Record<string, string> = {
-  'Proteínas': '🥩',
-  'Lácteos': '🥛',
-  'Vegetales': '🥦',
-  'Frutas': '🍎',
-  'Cereales': '🌾',
-  'Despensa': '🫙',
-  'Bebidas': '🧃',
-  'Otros': '📦',
-}
+import { useState, useEffect } from 'react'
+import { useFridge } from '@/hooks/useFridge'
+import type { FridgeItem } from '@/types'
 
 // --- Sub-componente: Tarjeta de Alimento ---
 function FridgeCard({ item, onUpdateStock, onDelete }: {
@@ -22,409 +8,248 @@ function FridgeCard({ item, onUpdateStock, onDelete }: {
   onUpdateStock: (id: string, amount: number) => void
   onDelete: (id: string) => void
 }) {
-  const isLow = item.stock_amount <= item.low_stock_threshold
-  const isEmpty = item.stock_amount <= 0
-  const pct = isEmpty ? 0 : Math.min(100, (item.stock_amount / (item.low_stock_threshold * 4)) * 100)
-
-  const stockColor = isEmpty ? 'bg-red-400' : isLow ? 'bg-orange-400' : 'bg-[#5BC897]'
-  const stockBg = isEmpty ? 'bg-red-50' : isLow ? 'bg-orange-50' : 'bg-emerald-50'
-  const stockText = isEmpty ? 'text-red-600' : isLow ? 'text-orange-600' : 'text-[#5BC897]'
+  const stock = item.stock_amount
+  const unit = item.stock_unit
+  
+  // Expiration logic
+  const isExpired = item.expiration_date ? new Date(item.expiration_date) < new Date() : false
+  const expDateStr = item.expiration_date ? new Date(item.expiration_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' }) : null
 
   return (
-    <div className={`relative bg-white rounded-2xl border overflow-hidden transition-all ${
-      isEmpty ? 'border-red-100' : isLow ? 'border-orange-100' : 'border-slate-100'
+    <div className={`relative bg-white rounded-[2.5rem] border-2 shadow-sm transition-all ${
+      stock <= 0 ? 'border-red-100 opacity-80' : 'border-slate-100'
     }`}>
-      {/* Stock bar at top */}
-      <div className="h-1 bg-slate-100">
-        <div
-          className={`h-full transition-all duration-500 rounded-full ${stockColor}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-
-      <div className="p-4">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2 mb-3">
+      <div className="p-6">
+        {/* Header Section */}
+        <div className="flex items-start justify-between gap-4 mb-6">
           <div className="flex-1 min-w-0">
-            <h4 className="font-bold text-slate-800 text-sm truncate capitalize">{item.name}</h4>
-            <span className="text-[10px] font-semibold text-slate-400 uppercase">{item.category}</span>
+            <h4 className="font-black text-slate-800 text-base truncate capitalize leading-tight mb-1">{item.name}</h4>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-100">
+                {item.food?.brand_name || 'Genérico'}
+              </span>
+              {expDateStr && (
+                <span className={`text-[10px] font-black uppercase px-2.5 py-1 rounded-xl border flex items-center gap-1.5 ${isExpired ? 'bg-red-50 text-red-500 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                  <span>⌛</span>
+                  <span>{isExpired ? 'Caducado' : expDateStr}</span>
+                </span>
+              )}
+            </div>
           </div>
           {item.image_url ? (
-            <img src={item.image_url} alt={item.name} className="w-10 h-10 rounded-xl object-cover shrink-0" />
+            <div className="relative">
+              <img src={item.image_url} alt={item.name} className="w-16 h-16 rounded-[1.5rem] object-cover shrink-0 shadow-md border-4 border-white" />
+            </div>
           ) : (
-            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-xl shrink-0">
-              {CATEGORY_ICONS[item.category] ?? '🍽️'}
+            <div className="w-16 h-16 bg-slate-50 rounded-[1.5rem] border-2 border-dashed border-slate-100 flex items-center justify-center text-3xl shrink-0">
+              🍲
             </div>
           )}
         </div>
 
-        {/* Macros per 100g */}
-        <div className="grid grid-cols-4 gap-1 mb-3">
-          {[
-            { label: 'kcal', value: Math.round(item.calories_per_100g), color: 'text-violet-500' },
-            { label: 'P', value: `${item.protein_per_100g}g`, color: 'text-blue-500' },
-            { label: 'C', value: `${item.carbs_per_100g}g`, color: 'text-green-500' },
-            { label: 'G', value: `${item.fats_per_100g}g`, color: 'text-orange-500' },
-          ].map(m => (
-            <div key={m.label} className="text-center bg-slate-50 rounded-lg py-1">
-              <p className={`text-[10px] font-black ${m.color}`}>{m.value}</p>
-              <p className="text-[9px] text-slate-400 font-semibold">{m.label}</p>
-            </div>
-          ))}
-        </div>
-        <p className="text-[9px] text-slate-300 text-right -mt-2 mb-2 font-medium">por 100g</p>
-
-        {/* Stock */}
-        <div className={`flex items-center justify-between px-3 py-2 rounded-xl ${stockBg} mb-3`}>
+        {/* Stock Management - Focus on Units */}
+        <div className={`flex items-center justify-between p-4 rounded-3xl ${stock <= 0 ? 'bg-red-50/50' : 'bg-slate-50/80 border border-slate-100'} mb-4`}>
           <div>
-            {isEmpty && (
-              <span className="text-[10px] font-black text-red-500 uppercase tracking-wide">⚠ Agotado</span>
-            )}
-            {isLow && !isEmpty && (
-              <span className="text-[10px] font-black text-orange-500 uppercase tracking-wide">⚠ Stock bajo</span>
-            )}
-            {!isLow && !isEmpty && (
-              <span className="text-[10px] font-bold text-slate-400">Stock</span>
-            )}
-            <p className={`text-sm font-black ${stockText}`}>
-              {item.stock_amount} <span className="text-xs font-semibold">{item.stock_unit}</span>
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-0.5">En Stock</span>
+            <p className={`text-xl font-black ${stock <= 0 ? 'text-red-500 text-lg' : 'text-slate-800'}`}>
+              {stock <= 0 ? 'Agotado' : stock} <span className="text-xs font-bold text-slate-400 uppercase ml-0.5">{unit === 'g' || unit === 'ml' ? unit : 'uds'}</span>
             </p>
           </div>
-          {/* Quick adjust */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => onUpdateStock(item.id, Math.max(0, item.stock_amount - (item.stock_unit === 'uds' ? 1 : 50)))}
-              className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 font-bold text-sm flex items-center justify-center hover:border-slate-300 transition-colors active:scale-95"
+              onClick={() => onUpdateStock(item.id, Math.max(0, stock - 1))}
+              className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-red-500 font-bold text-xl flex items-center justify-center transition-all active:scale-90"
             >−</button>
             <button
-              onClick={() => onUpdateStock(item.id, item.stock_amount + (item.stock_unit === 'uds' ? 1 : 50))}
-              className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-500 font-bold text-sm flex items-center justify-center hover:border-slate-300 transition-colors active:scale-95"
+              onClick={() => onUpdateStock(item.id, stock + 1)}
+              className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-200 text-slate-400 hover:text-[#7B61FF] font-bold text-xl flex items-center justify-center transition-all active:scale-90"
             >+</button>
           </div>
         </div>
 
-        {/* Delete */}
+        {/* Delete Action */}
         <button
           onClick={() => onDelete(item.id)}
-          className="w-full text-[10px] font-bold text-slate-300 hover:text-red-400 transition-colors"
+          className="w-full text-[10px] font-black text-slate-300 hover:text-red-400 transition-all uppercase tracking-[0.2em] py-2"
         >
-          Eliminar
+          Retirar de la nevera
         </button>
       </div>
     </div>
   )
 }
 
-// --- Sub-componente: Formulario Añadir ---
-function AddItemModal({ onClose, onAdd }: {
-  onClose: () => void
-  onAdd: (item: any) => void
-}) {
-  const [name, setName] = useState('')
-  const [category, setCategory] = useState('Despensa')
-  const [calories, setCalories] = useState('')
-  const [protein, setProtein] = useState('')
-  const [carbs, setCarbs] = useState('')
-  const [fats, setFats] = useState('')
-  const [stockAmount, setStockAmount] = useState('100')
-  const [stockUnit, setStockUnit] = useState('g')
-  const [lowThreshold, setLowThreshold] = useState('100')
-  const [isAnalyzing, setIsAnalyzing] = useState(false)
-
-  const handleAutoFill = async () => {
-    if (!name.trim()) return
-    setIsAnalyzing(true)
-    try {
-      const { data } = await supabase.functions.invoke('analyze-food', {
-        body: { text_description: `100g de ${name}` }
-      })
-      if (data) {
-        setCalories(Math.round(data.calories || 0).toString())
-        setProtein((data.macros?.p || 0).toString())
-        setCarbs((data.macros?.c || 0).toString())
-        setFats((data.macros?.f || 0).toString())
-      }
-    } catch (e) { console.error(e) }
-    finally { setIsAnalyzing(false) }
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name) return
-    onAdd({
-      name: name.trim(),
-      category,
-      image_url: null,
-      calories_per_100g: parseFloat(calories) || 0,
-      protein_per_100g: parseFloat(protein) || 0,
-      carbs_per_100g: parseFloat(carbs) || 0,
-      fats_per_100g: parseFloat(fats) || 0,
-      stock_amount: parseFloat(stockAmount) || 0,
-      stock_unit: stockUnit,
-      low_stock_threshold: parseFloat(lowThreshold) || 100,
-    })
-  }
-
-  return (
-    <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-4 pb-24 sm:pb-4">
-      <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl flex flex-col max-h-[85vh]">
-        <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
-          <div>
-            <h3 className="text-lg font-black text-slate-800">Añadir Alimento</h3>
-            <p className="text-xs text-slate-400 font-medium mt-0.5">Añade un ítem a tu nevera</p>
-          </div>
-          <button type="button" onClick={onClose} className="p-2 rounded-xl bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        <div className="overflow-y-auto flex-1 p-6">
-          <form id="add-fridge-form" onSubmit={handleSubmit} className="space-y-4">
-            {/* Nombre + AI */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Alimento</label>
-              <div className="relative">
-                <input
-                  type="text" required value={name} onChange={e => setName(e.target.value)}
-                  placeholder="Ej: Pechuga de pollo"
-                  className="w-full bg-slate-50 text-slate-800 pl-4 pr-12 py-3 rounded-2xl font-semibold text-sm border-2 border-transparent focus:border-[#7B61FF]/30 focus:bg-white transition-all outline-none"
-                />
-                <button type="button" onClick={handleAutoFill} disabled={isAnalyzing || !name.trim()}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 bg-[#7B61FF] text-white rounded-xl disabled:opacity-40 transition-colors"
-                >
-                  {isAnalyzing
-                    ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-                  }
-                </button>
-              </div>
-              <p className="text-[10px] text-slate-400 mt-1 px-1">Pulsa ✨ para auto-rellenar macros con IA</p>
-            </div>
-
-            {/* Categoría */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Categoría</label>
-              <div className="relative">
-                <select value={category} onChange={e => setCategory(e.target.value)}
-                  className="w-full bg-slate-50 text-slate-800 pl-4 pr-8 py-3 rounded-2xl font-semibold text-sm border-2 border-transparent focus:border-[#7B61FF]/30 transition-all outline-none appearance-none">
-                  {FRIDGE_CATEGORIES.map(c => <option key={c} value={c}>{CATEGORY_ICONS[c]} {c}</option>)}
-                </select>
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Macros por 100g */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Macros por 100g</label>
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { label: 'kcal', state: calories, setState: setCalories },
-                  { label: 'Prot (g)', state: protein, setState: setProtein },
-                  { label: 'Carbs (g)', state: carbs, setState: setCarbs },
-                  { label: 'Grasas (g)', state: fats, setState: setFats },
-                ].map(f => (
-                  <div key={f.label} className="bg-slate-50 rounded-xl p-2">
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mb-1">{f.label}</p>
-                    <input type="number" value={f.state} onChange={e => f.setState(e.target.value)}
-                      placeholder="0"
-                      className="w-full bg-transparent text-slate-800 font-bold text-sm focus:outline-none" />
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Stock */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Stock Actual</label>
-              <div className="flex gap-2">
-                <input type="number" value={stockAmount} onChange={e => setStockAmount(e.target.value)} min="0"
-                  placeholder="0"
-                  className="flex-1 bg-slate-50 text-slate-800 px-4 py-3 rounded-2xl font-bold text-sm border-2 border-transparent focus:border-[#7B61FF]/30 transition-all outline-none" />
-                <div className="relative">
-                  <select value={stockUnit} onChange={e => setStockUnit(e.target.value)}
-                    className="bg-slate-50 text-slate-800 pl-3 pr-8 py-3 rounded-2xl font-semibold text-sm border-2 border-transparent focus:border-[#7B61FF]/30 transition-all outline-none appearance-none">
-                    <option value="g">g</option>
-                    <option value="ml">ml</option>
-                    <option value="uds">uds</option>
-                  </select>
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Umbral alerta */}
-            <div>
-              <label className="block text-xs font-black text-slate-400 uppercase tracking-wider mb-2">Alerta de Stock Bajo ({'<'} valor)</label>
-              <div className="flex items-center gap-2">
-                <input type="number" value={lowThreshold} onChange={e => setLowThreshold(e.target.value)} min="0"
-                  className="flex-1 bg-slate-50 text-slate-800 px-4 py-3 rounded-2xl font-bold text-sm border-2 border-transparent focus:border-[#7B61FF]/30 transition-all outline-none" />
-                <span className="text-sm text-slate-400 font-semibold">{stockUnit}</span>
-              </div>
-            </div>
-          </form>
-        </div>
-
-        <div className="p-6 border-t border-slate-100 shrink-0">
-          <button form="add-fridge-form" type="submit"
-            className="w-full bg-[#7B61FF] hover:bg-[#684DEC] text-white font-black text-base py-4 rounded-2xl shadow-lg shadow-purple-200 transition-all active:scale-[0.98]">
-            Añadir a la Nevera 🧊
-          </button>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// --- Página Principal ---
 export default function FridgePage() {
-  const { items, isLoading, addItem, updateStock, deleteItem } = useFridgeItems()
-  const [showAdd, setShowAdd] = useState(false)
-  const [showShopping, setShowShopping] = useState(false)
-  const [filterCategory, setFilterCategory] = useState<string | null>(null)
+  const { getFridgeItems, updateStock, removeItem } = useFridge()
+  const [items, setItems] = useState<FridgeItem[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [filterQuery, setFilterQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
 
-  const handleAddBulk = async (newItems: any[]) => {
-    for (const item of newItems) {
-      await addItem.mutateAsync({ ...item, image_url: null })
-    }
-    setShowShopping(false)
+  const CATEGORIES = [
+    { id: 'Verduras', icon: '🥦' },
+    { id: 'Frutas', icon: '🍎' },
+    { id: 'Snacks', icon: '🍕' },
+    { id: 'Carne', icon: '🥩' },
+    { id: 'Pescado', icon: '🐟' },
+    { id: 'Cereales', icon: '🌾' },
+    { id: 'Frutos Secos', icon: '🥜' },
+    { id: 'Lácteos', icon: '🥛' },
+    { id: 'Legumbres', icon: '🫘' },
+    { id: 'Bebidas', icon: '🥤' },
+    { id: 'Platos Preparados', icon: '🥘' },
+    { id: 'Congelados', icon: '🧊' },
+    { id: 'Panadería', icon: '🥖' },
+  ]
+
+  const loadItems = async () => {
+    setIsLoading(true)
+    const data = await getFridgeItems()
+    setItems(data)
+    setIsLoading(false)
   }
 
-  const grouped = items.reduce<Record<string, FridgeItem[]>>((acc, item) => {
-    if (filterCategory && item.category !== filterCategory) return acc
-    ;(acc[item.category] = acc[item.category] || []).push(item)
-    return acc
-  }, {})
+  useEffect(() => {
+    loadItems()
 
-  const lowStockCount = items.filter(i => i.stock_amount <= i.low_stock_threshold).length
+    const handleUpdate = () => loadItems()
+    window.addEventListener('fridge-updated', handleUpdate)
+    return () => window.removeEventListener('fridge-updated', handleUpdate)
+  }, [])
+
+  const filteredItems = items.filter(i => {
+    const matchesQuery = i.name.toLowerCase().includes(filterQuery.toLowerCase()) ||
+      (i.food?.brand_name || '').toLowerCase().includes(filterQuery.toLowerCase())
+    const matchesCategory = !selectedCategory || i.food?.categoria === selectedCategory
+    return matchesQuery && matchesCategory
+  })
+
+  const lowStockThreshold = 100 // Example threshold
+  const lowStockCount = items.filter(i => i.stock_amount <= lowStockThreshold).length
 
   return (
-    <div className="min-h-screen bg-[#F8F9FE] -mx-4 -mt-6 pb-36">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-md border-b border-slate-100">
-        <div className="max-w-2xl mx-auto px-4 pt-12 pb-4">
+    <div className="min-h-screen bg-[#F8F9FE] -mx-4 -mt-6 pb-40">
+      {/* Header Profile Section */}
+      <div className="bg-white px-6 pt-12 pb-8 rounded-b-[3.5rem] shadow-sm border-b border-slate-100">
+        <div className="max-w-4xl mx-auto flex flex-col gap-6">
           <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-black text-slate-800 tracking-tight">Mi Nevera 🧊</h1>
-              <p className="text-xs font-semibold text-slate-400 mt-0.5">
-                {items.length} producto{items.length !== 1 ? 's' : ''}
-                {lowStockCount > 0 && (
-                  <span className="ml-2 text-orange-500 font-bold">
-                    · {lowStockCount} con stock bajo
-                  </span>
-                )}
-              </p>
+            <div className="pt-1.5">
+              <h1 className="text-2xl font-black text-slate-800 tracking-tight leading-none">Mi Nevera</h1>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1.5">Gestión de Inventario</p>
             </div>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setShowShopping(true)}
-                className="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold px-3 py-2.5 rounded-2xl transition-all active:scale-95"
-              >
-                🛒 Cargar
-              </button>
-              <button
-                onClick={() => setShowAdd(true)}
-                className="flex items-center gap-2 bg-[#7B61FF] hover:bg-[#684DEC] text-white text-sm font-bold px-4 py-2.5 rounded-2xl shadow-md shadow-purple-200 transition-all active:scale-95"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                Añadir
-              </button>
-            </div>
-          </div>
-
-          {/* Category filters */}
-          {items.length > 0 && (
-            <div className="flex gap-2 mt-4 overflow-x-auto pb-1 scrollbar-none">
-              <button
-                onClick={() => setFilterCategory(null)}
-                className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                  !filterCategory ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'bg-white text-slate-500 border-slate-200'
-                }`}
-              >
-                Todos
-              </button>
-              {[...new Set(items.map(i => i.category))].map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setFilterCategory(filterCategory === cat ? null : cat)}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
-                    filterCategory === cat ? 'bg-[#7B61FF] text-white border-[#7B61FF]' : 'bg-white text-slate-500 border-slate-200'
-                  }`}
-                >
-                  {CATEGORY_ICONS[cat]} {cat}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div className="max-w-2xl mx-auto px-4 pt-6 space-y-8">
-        {isLoading ? (
-          <div className="flex flex-col items-center py-20 gap-4">
-            <div className="w-10 h-10 border-4 border-[#7B61FF] border-t-transparent rounded-full animate-spin" />
-            <p className="text-slate-400 font-medium text-sm">Cargando tu nevera...</p>
-          </div>
-        ) : items.length === 0 ? (
-          // Empty state
-          <div className="flex flex-col items-center py-20 gap-4 text-center">
-            <div className="text-6xl">🧊</div>
-            <h2 className="text-xl font-black text-slate-700">Tu nevera está vacía</h2>
-            <p className="text-sm text-slate-400 font-medium max-w-xs">
-              Empieza añadiendo los alimentos que tienes en casa para hacer seguimiento de tu despensa.
-            </p>
+            
             <button
-              onClick={() => setShowAdd(true)}
-              className="mt-2 bg-[#7B61FF] text-white font-bold px-6 py-3 rounded-2xl shadow-md shadow-purple-100 transition-all active:scale-95 hover:bg-[#684DEC]"
+              onClick={() => window.dispatchEvent(new CustomEvent('open-fridge-add'))}
+              className="w-12 h-12 bg-[#7B61FF] text-white rounded-2xl flex items-center justify-center shadow-lg shadow-purple-100 active:scale-95 transition-all animate-popIn"
             >
-              Añadir primer alimento
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+              </svg>
             </button>
           </div>
-        ) : Object.keys(grouped).length === 0 ? (
-          <div className="text-center py-16 text-slate-400 font-medium text-sm">
-            No hay alimentos en esta categoría.
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Ítems</p>
+              <p className="text-2xl font-black text-slate-800">{items.length}</p>
+            </div>
+            <div className="bg-orange-50 p-4 rounded-3xl border border-orange-100">
+              <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Stock Bajo</p>
+              <p className="text-2xl font-black text-orange-600">{lowStockCount}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 mt-8 space-y-8">
+        
+        {/* Search/Filter Bar */}
+        <div className="relative">
+          <input 
+            type="text" 
+            placeholder="Filtrar por nombre o marca..." 
+            value={filterQuery}
+            onChange={e => setFilterQuery(e.target.value)}
+            className="w-full bg-white p-5 pl-14 rounded-[2rem] font-bold text-slate-600 shadow-sm border border-slate-100 focus:border-[#7B61FF]/30 outline-none transition-all placeholder:text-slate-300"
+          />
+          <span className="absolute left-6 top-1/2 -translate-y-1/2 text-xl opacity-40">🔎</span>
+        </div>
+
+        {/* Category Filter */}
+        <div className="flex overflow-x-auto gap-2 no-scrollbar py-2 -mx-4 px-4">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className={`shrink-0 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+              !selectedCategory ? 'bg-[#7B61FF] text-white shadow-lg shadow-purple-100 scale-105' : 'bg-white text-slate-400 border border-slate-100 shadow-sm'
+            }`}
+          >
+            Todos
+          </button>
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+              className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                selectedCategory === cat.id ? 'bg-[#7B61FF] text-white shadow-lg shadow-purple-100 scale-105' : 'bg-white text-slate-400 border border-slate-100 shadow-sm'
+              }`}
+            >
+              <span>{cat.icon}</span>
+              <span>{cat.id}</span>
+            </button>
+          ))}
+        </div>
+
+        {isLoading ? (
+          <div className="flex flex-col items-center py-24 gap-4 animate-fadeIn">
+            <div className="w-10 h-10 border-4 border-[#7B61FF] border-t-transparent rounded-full animate-spin" />
+            <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Escaneando Inventario...</p>
+          </div>
+        ) : filteredItems.length === 0 ? (
+          <div className="flex flex-col items-center py-24 gap-6 text-center animate-slideUp">
+            <div className="text-6xl grayscale opacity-30">📦</div>
+            <div>
+              <h2 className="text-xl font-black text-slate-700">Nada por aquí</h2>
+              <p className="text-sm text-slate-400 font-bold max-w-xs mt-2 uppercase tracking-wide">
+                {filterQuery ? 'No hay resultados para tu búsqueda' : 'Tu nevera personal está vacía'}
+              </p>
+            </div>
+            {!filterQuery && (
+              <button
+                onClick={() => {
+                  // This will be handled by the Navbar button or we can trigger it 
+                  // but the user wants the yellow button at the same spot.
+                  // For the "Empty State" button, we can still use a local action if needed
+                  // but let's keep it consistent:
+                  window.dispatchEvent(new CustomEvent('open-fridge-add'))
+                }}
+                className="bg-white border-2 border-slate-100 text-slate-400 font-black px-8 py-4 rounded-[1.5rem] text-xs uppercase tracking-widest hover:border-[#7B61FF] hover:text-[#7B61FF] transition-all active:scale-95 shadow-sm"
+              >
+                Registrar primer producto
+              </button>
+            )}
           </div>
         ) : (
-          Object.entries(grouped).map(([category, catItems]) => (
-            <section key={category}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="text-lg">{CATEGORY_ICONS[category] ?? '🍽️'}</span>
-                <h2 className="text-sm font-black text-slate-600 uppercase tracking-widest">{category}</h2>
-                <span className="text-xs text-slate-300 font-bold">({catItems.length})</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {catItems.map(item => (
-                  <FridgeCard
-                    key={item.id}
-                    item={item}
-                    onUpdateStock={(id, amount) => updateStock.mutate({ id, stock_amount: amount })}
-                    onDelete={(id) => deleteItem.mutate(id)}
-                  />
-                ))}
-              </div>
-            </section>
-          ))
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-fadeIn">
+            {filteredItems.map(item => (
+              <FridgeCard
+                key={item.id}
+                item={item}
+                onUpdateStock={async (id, amount) => {
+                  await updateStock(id, amount)
+                  loadItems()
+                }}
+                onDelete={async (id) => {
+                  if (confirm('¿Retirar este alimento de la nevera?')) {
+                    await removeItem(id)
+                    loadItems()
+                  }
+                }}
+              />
+            ))}
+          </div>
         )}
       </div>
 
-      {showAdd && (
-        <AddItemModal
-          onClose={() => setShowAdd(false)}
-          onAdd={data => {
-            addItem.mutate(data, { onSuccess: () => setShowAdd(false) })
-          }}
-        />
-      )}
-
-      {showShopping && (
-        <ShoppingEntry
-          onClose={() => setShowShopping(false)}
-          onAddItems={handleAddBulk}
-        />
-      )}
     </div>
   )
 }

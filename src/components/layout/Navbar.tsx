@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import ManualSearch from '../ManualSearch'
 import ImageUpload from '../ImageUpload'
 import VoiceTextEntry from '../VoiceTextEntry'
 import DirectManualEntry from '../DirectManualEntry'
+import AddToFridge from '../AddToFridge'
 import { useSaveMealEntry } from '@/hooks/useSaveMealEntry'
 
 const navItemsStart = [
@@ -44,16 +45,23 @@ const navItemsEnd = [
 
 export default function Navbar() {
   const location = useLocation()
-  const isProfile = location.pathname === '/profile'
+  const hidePlusButton = location.pathname === '/profile' || location.pathname === '/nevera'
   const { saveMeal } = useSaveMealEntry()
   const [showManual, setShowManual] = useState(false)
   const [showUpload, setShowUpload] = useState(false)
   const [showVoice, setShowVoice] = useState(false)
   const [showDirect, setShowDirect] = useState(false)
+  const [showFridgeAdd, setShowFridgeAdd] = useState(false)
   const [showPlusMenu, setShowPlusMenu] = useState(false)
   
   // Shared data for the central smart form
   const [sharedData, setSharedData] = useState<any>(null)
+
+  useEffect(() => {
+    const handleOpenFridge = () => setShowFridgeAdd(true)
+    window.addEventListener('open-fridge-add', handleOpenFridge)
+    return () => window.removeEventListener('open-fridge-add', handleOpenFridge)
+  }, [])
 
   return (
     <>
@@ -127,7 +135,7 @@ export default function Navbar() {
       </nav>
 
       {/* Floating FAB - Independent of the nav tray, centered at 50% */}
-      {!isProfile && (
+      {!hidePlusButton && (
         <div className="fixed left-1/2 -translate-x-1/2 bottom-24 flex flex-col items-center z-[51]">
           
           {/* FAB Options (Radial) */}
@@ -219,6 +227,14 @@ export default function Navbar() {
         />
       )}
       {showDirect && <DirectManualEntry initialData={sharedData} onClose={() => { setShowDirect(false); setSharedData(null); }} />}
+      {showFridgeAdd && (
+        <AddToFridge 
+          onClose={() => {
+            setShowFridgeAdd(false)
+            window.dispatchEvent(new Event('fridge-updated'))
+          }} 
+        />
+      )}
     </>
   )
 }

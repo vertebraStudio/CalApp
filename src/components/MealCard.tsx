@@ -3,6 +3,7 @@ import type { Meal } from '@/types'
 interface MealCardProps {
   meal: Meal
   onDelete?: (id: string) => void
+  onClick?: () => void
 }
 
 function MacroPill({ label, value, color }: { label: string; value: number; color: string }) {
@@ -14,9 +15,12 @@ function MacroPill({ label, value, color }: { label: string; value: number; colo
   )
 }
 
-export default function MealCard({ meal, onDelete }: MealCardProps) {
+export default function MealCard({ meal, onDelete, onClick }: MealCardProps) {
   return (
-    <div className="bg-white rounded-2xl p-3 flex gap-4 items-center group shadow-sm border border-slate-50 transition-all hover:shadow-md">
+    <div 
+      onClick={onClick}
+      className={`bg-white rounded-2xl p-3 flex gap-4 items-center group shadow-sm border border-slate-50 transition-all hover:shadow-md ${onClick ? 'cursor-pointer active:scale-[0.98]' : ''}`}
+    >
       {/* Imagen */}
       {meal.image_url ? (
         <img
@@ -50,7 +54,10 @@ export default function MealCard({ meal, onDelete }: MealCardProps) {
              
              {onDelete && (
                 <button
-                  onClick={() => onDelete(meal.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(meal.id);
+                  }}
                   className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-red-400 p-1.5 hover:bg-red-50 rounded-lg"
                   aria-label="Eliminar comida"
                 >

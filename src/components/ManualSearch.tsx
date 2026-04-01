@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
+import { getFriendlyMeasures, normalizeToWeight } from '@/utils/conversions'
 import type { MealType } from '@/types'
 import type { MealEntryData } from '@/hooks/useSaveMealEntry'
 
@@ -29,10 +30,27 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
   const { user } = useAuth()
   const [query, setQuery] = useState('')
   const [brandQuery, setBrandQuery] = useState('')
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [brands, setBrands] = useState<string[]>([])
   const [results, setResults] = useState<any[]>([])
   const [recentMeals, setRecentMeals] = useState<any[]>([])
   const [loadingSearch, setLoadingSearch] = useState(false)
+
+  const CATEGORIES = [
+    { id: 'Verduras', icon: '🥦' },
+    { id: 'Frutas', icon: '🍎' },
+    { id: 'Snacks', icon: '🍕' },
+    { id: 'Carne', icon: '🥩' },
+    { id: 'Pescado', icon: '🐟' },
+    { id: 'Cereales', icon: '🌾' },
+    { id: 'Frutos Secos', icon: '🥜' },
+    { id: 'Lácteos', icon: '🥛' },
+    { id: 'Legumbres', icon: '🫘' },
+    { id: 'Bebidas', icon: '🥤' },
+    { id: 'Platos Preparados', icon: '🥘' },
+    { id: 'Congelados', icon: '🧊' },
+    { id: 'Panadería', icon: '🥖' },
+  ]
 
   const [selectedFood, setSelectedFood] = useState<any | null>(null)
   const [selectedMealType, setSelectedMealType] = useState<MealType>(getDefaultMealType())
@@ -49,7 +67,14 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
         .order('brand')
 
       if (!error && data) {
-        const uniqueBrands = Array.from(new Set(data.map(i => i.brand))).filter(Boolean) as string[]
+        // Normalize to Title Case and de-duplicate case-insensitively
+        const normalized = data.map(item => {
+          const b = (item.brand || '').trim().toLowerCase()
+          if (!b) return null
+          return b.split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+        }).filter(Boolean) as string[]
+        
+        const uniqueBrands = Array.from(new Set(normalized)).sort()
         setBrands(uniqueBrands)
       }
     }
@@ -82,20 +107,21 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
     }
     loadRecent()
   }, [user])
+
   useEffect(() => {
-    if (!query.trim() && !brandQuery.trim()) {
+    if (!query.trim() && !brandQuery.trim() && !selectedCategory) {
       setResults([])
       return
     }
 
-    if (query.length < 2 && brandQuery.length < 2) return
+    if (query.length < 2 && brandQuery.length < 2 && !selectedCategory) return
 
     const timer = setTimeout(async () => {
       setLoadingSearch(true)
       try {
         const normalizedQuery = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
 
-        let supabaseQuery = supabase.from('global_foods').select('*')
+        let supabaseQuery = supabase.from('global_foods').select('*, is_liquid, friendly_measures')
 
         if (query && brandQuery) {
           // Both filters provided
@@ -105,9 +131,13 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
         } else if (query) {
           // Only name filter
           supabaseQuery = supabaseQuery.or(`name.ilike.%${query}%,brand.ilike.%${query}%,normalized_name.ilike.%${normalizedQuery}%`)
-        } else {
+        } else if (brandQuery) {
           // Only brand filter
           supabaseQuery = supabaseQuery.ilike('brand', `%${brandQuery}%`)
+        }
+
+        if (selectedCategory) {
+          supabaseQuery = supabaseQuery.eq('categoria', selectedCategory)
         }
 
         const { data, error } = await supabaseQuery.limit(20)
@@ -131,9 +161,12 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
             }
           },
           image_url: food.image_url,
+          categoria: food.categoria,
           serving_size_g: food.serving_size_g,
           serving_unit: food.serving_unit,
-          base_unit: food.base_unit
+          base_unit: food.base_unit,
+          is_liquid: food.is_liquid,
+          friendly_measures: food.friendly_measures
         })) || []
 
         setResults(mappedResults)
@@ -145,7 +178,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
     }, 400)
 
     return () => clearTimeout(timer)
-  }, [query, brandQuery]) // Listen to both
+  }, [query, brandQuery, selectedCategory])
 
   // Update initial units when selecting a food
   useEffect(() => {
@@ -163,12 +196,12 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
   const handleSave = () => {
     if (!selectedFood) return
 
-    const getWeight = () => {
-      if (unit === 'serving') return amount * (selectedFood.serving_size_g || 100)
-      if (unit === 'vaso') return amount * 250
-      return amount
-    }
-    const weight = getWeight()
+    const weight = normalizeToWeight(amount, unit, {
+      is_liquid: selectedFood.is_liquid,
+      serving_size_g: selectedFood.serving_size_g,
+      friendly_measures: selectedFood.friendly_measures
+    })
+    
     const ratio = weight / 100
     const finalCalories = Math.round(selectedFood.params_per_100g.calories * ratio)
     const finalP = Number((selectedFood.params_per_100g.macros.p * ratio).toFixed(1))
@@ -181,10 +214,10 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
     if (unit === 'serving') {
       const uName = selectedFood.serving_unit ? (amount === 1 ? selectedFood.serving_unit : `${selectedFood.serving_unit}s`) : 'porciones'
       foodNameExt = `${amount} ${uName} de ${selectedFood.food_name}`
-    } else if (unit === 'vaso') {
-      foodNameExt = `${amount} vaso${amount !== 1 ? 's' : ''} de ${selectedFood.food_name}`
-    } else {
+    } else if (unit === 'base') {
       foodNameExt = selectedFood.is_global ? selectedFood.food_name : `${amount}${selectedFood.base_unit || 'g'} ${selectedFood.food_name}`
+    } else {
+      foodNameExt = `${amount} ${unit}${amount !== 1 ? 's' : ''} de ${selectedFood.food_name}`
     }
 
     onFoodSelected({
@@ -198,18 +231,31 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
         salt: finalSalt
       },
       meal_type: selectedMealType,
-      image_url: selectedFood.image_url
+      image_url: selectedFood.image_url,
+      base_values: {
+        calories: selectedFood.params_per_100g.calories,
+        p: selectedFood.params_per_100g.macros.p,
+        c: selectedFood.params_per_100g.macros.c,
+        f: selectedFood.params_per_100g.macros.f,
+        sugar: selectedFood.params_per_100g.macros.sugar,
+        salt: selectedFood.params_per_100g.macros.salt,
+        serving_size_g: selectedFood.serving_size_g,
+        serving_unit: selectedFood.serving_unit,
+        base_unit: selectedFood.base_unit,
+        is_liquid: selectedFood.is_liquid,
+        friendly_measures: selectedFood.friendly_measures
+      }
     })
   }
 
   // Selección de cantidad y confirmación
   if (selectedFood) {
-    const getWeight = () => {
-      if (unit === 'serving') return amount * (selectedFood.serving_size_g || 100)
-      if (unit === 'vaso') return amount * 250
-      return amount
-    }
-    const weight = getWeight()
+    const weight = normalizeToWeight(amount, unit, {
+      is_liquid: selectedFood.is_liquid,
+      serving_size_g: selectedFood.serving_size_g,
+      friendly_measures: selectedFood.friendly_measures
+    })
+    
     const ratio = weight / 100
     const currentCal = Math.round(selectedFood.params_per_100g.calories * ratio)
     const currentP = (selectedFood.params_per_100g.macros.p * ratio).toFixed(1)
@@ -217,6 +263,12 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
     const currentF = (selectedFood.params_per_100g.macros.f * ratio).toFixed(1)
     const currentSugar = ((selectedFood.params_per_100g.macros.sugar || 0) * ratio).toFixed(1)
     const currentSalt = ((selectedFood.params_per_100g.macros.salt || 0) * ratio).toFixed(2)
+
+    const friendlyMeasures = getFriendlyMeasures(
+      !!selectedFood.is_liquid, 
+      selectedFood.friendly_measures,
+      selectedFood.serving_unit
+    )
 
     return (
       <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 pb-20 sm:pb-4 animate-fadeIn">
@@ -265,38 +317,43 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
             {/* Amount Slider/Input */}
             <div className="bg-slate-50 rounded-3xl p-6 relative overflow-hidden">
               
-              {/* Toggle Mode */}
-              {(selectedFood.serving_size_g || selectedFood.base_unit === 'ml') && (
-                <div className="flex bg-slate-200/50 p-1 rounded-xl mb-6">
-                  <button 
-                    onClick={() => {
-                      if (selectedFood.serving_size_g) {
-                        setUnit('serving'); setAmount(1);
-                      } else {
-                        setUnit('vaso'); setAmount(1);
-                      }
-                    }}
-                    className={`flex-1 py-2 text-[10px] uppercase tracking-widest font-black rounded-lg transition-all ${
-                      (unit === 'serving' || unit === 'vaso') ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
-                    }`}
-                  >
-                    {selectedFood.serving_size_g 
-                      ? (selectedFood.serving_unit ? selectedFood.serving_unit + 's' : 'Porciones')
-                      : 'Vasos'}
-                  </button>
+              {/* friendly measures carousel */}
+              <div className="flex bg-slate-200/50 p-1 rounded-2xl mb-6 overflow-x-auto no-scrollbar scroll-smooth">
+                <div className="flex gap-1 min-w-full">
+                  {selectedFood.serving_size_g && (
+                    <button 
+                      onClick={() => { setUnit('serving'); setAmount(1); }}
+                      className={`shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest font-black rounded-xl transition-all ${
+                        unit === 'serving' ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
+                      }`}
+                    >
+                      {selectedFood.serving_unit || 'Porción'}
+                    </button>
+                  )}
+                  {friendlyMeasures.map(m => (
+                    <button 
+                      key={m.name}
+                      onClick={() => { setUnit(m.name); setAmount(1); }}
+                      className={`shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest font-black rounded-xl transition-all ${
+                        unit === m.name ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
+                      }`}
+                    >
+                      {m.name}
+                    </button>
+                  ))}
                   <button 
                     onClick={() => { 
                       setUnit('base'); 
-                      setAmount(selectedFood.serving_size_g || (selectedFood.base_unit === 'ml' ? 250 : 100)); 
+                      setAmount(selectedFood.serving_size_g || 100); 
                     }}
-                    className={`flex-1 py-2 text-[10px] uppercase tracking-widest font-black rounded-lg transition-all ${
+                    className={`shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest font-black rounded-xl transition-all ${
                       unit === 'base' ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
                     }`}
                   >
                     Exacto ({selectedFood.base_unit || 'g'})
                   </button>
                 </div>
-              )}
+              </div>
 
               <div className="flex items-center justify-between gap-4 mb-4">
                 <div className="flex flex-col flex-1 min-w-0">
@@ -339,18 +396,10 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
                 </div>
               </div>
 
-              {/* Resultado Visual de la fórmula */}
-              {(unit === 'serving' && selectedFood.serving_size_g) && (
+              {unit !== 'base' && (
                  <div className="text-center mb-4">
                     <span className="text-[10px] font-bold text-slate-400">
-                      Consumiendo: <strong className="text-slate-600">{(amount * selectedFood.serving_size_g).toFixed(0)}{selectedFood.base_unit || 'g'}</strong> ({amount} {selectedFood.serving_unit ? selectedFood.serving_unit + (amount !== 1 ? 's' : '') : 'porciones'})
-                    </span>
-                 </div>
-              )}
-              {unit === 'vaso' && (
-                 <div className="text-center mb-4">
-                    <span className="text-[10px] font-bold text-slate-400">
-                      Consumiendo: <strong className="text-slate-600">{(amount * 250).toFixed(0)}ml</strong> ({amount} vaso{amount !== 1 ? 's' : ''})
+                      Consumiendo: <strong className="text-slate-600">{weight.toFixed(0)}{selectedFood.base_unit || 'g'}</strong> ({amount} {unit === 'serving' ? (selectedFood.serving_unit || 'porción') : unit}{amount !== 1 ? 's' : ''})
                     </span>
                  </div>
               )}
@@ -452,6 +501,29 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
             </div>
           </div>
+
+          <div className="flex overflow-x-auto gap-2 no-scrollbar py-2 -mx-1 px-1">
+            <button
+              onClick={() => setSelectedCategory(null)}
+              className={`shrink-0 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                !selectedCategory ? 'bg-[#7B61FF] text-white shadow-lg shadow-purple-100 scale-105' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+              }`}
+            >
+              Todos
+            </button>
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+                className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                  selectedCategory === cat.id ? 'bg-[#7B61FF] text-white shadow-lg shadow-purple-100 scale-105' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                }`}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.id}</span>
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-2">
@@ -514,18 +586,23 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
                 {recentMeals.map((meal: any) => (
                   <button
                     key={meal.id}
-                    onClick={() => onFoodSelected({
+                    onClick={() => setSelectedFood({
+                      food_id: meal.id,
                       food_name: meal.name,
-                      calories: meal.calories,
-                      macros: {
-                        p: meal.protein,
-                        c: meal.carbs,
-                        f: meal.fats,
-                        sugar: meal.sugar,
-                        salt: meal.salt
+                      brand_name: 'Reciente',
+                      params_per_100g: {
+                        calories: meal.calories,
+                        macros: {
+                          p: meal.protein,
+                          c: meal.carbs,
+                          f: meal.fats,
+                          sugar: meal.sugar,
+                          salt: meal.salt
+                        }
                       },
-                      meal_type: selectedMealType,
-                      image_url: meal.image_url
+                      image_url: meal.image_url,
+                      base_unit: 'g',
+                      serving_size_g: 100 // Treat the last entry as the base 100g unit for scaling
                     })}
                     className="w-full text-left p-4 bg-slate-50/50 hover:bg-slate-100/80 rounded-2xl transition-all border border-transparent hover:border-slate-200 group flex items-start justify-between"
                   >

@@ -42,6 +42,23 @@ export interface Meal {
   salt: number
   meal_type: MealType
   created_at: string
+  // Base values for precision editing
+  base_calories?: number
+  base_protein?: number
+  base_carbs?: number
+  base_fats?: number
+  base_sugar?: number
+  base_salt?: number
+  serving_size_g?: number
+  serving_unit?: string
+  base_unit?: string
+  friendly_measures?: FriendlyMeasure[]
+  is_liquid?: boolean
+}
+
+export interface FriendlyMeasure {
+  name: string
+  weight: number
 }
 
 export interface PlannerEntry {
@@ -79,4 +96,44 @@ export interface WeightHistoryEntry {
   weight: number
   recorded_at: string
   created_at: string
+}
+
+export type FoodCategory = 
+  | 'Verduras' | 'Frutas' | 'Snacks' | 'Carne' | 'Pescado' | 'Cereales' 
+  | 'Frutos Secos' | 'Lácteos' | 'Legumbres' | 'Bebidas' | 'Platos Preparados' 
+  | 'Congelados' | 'Panadería';
+
+export interface Food {
+  id: string
+  food_name: string
+  brand_name: string | null
+  categoria: FoodCategory
+  calories: number
+  protein: number
+  carbs: number
+  fats: number
+  sugar: number
+  salt: number
+  image_url: string | null
+  serving_size_g: number | null
+  serving_unit: string | null
+  base_unit: string
+  is_liquid: boolean
+  friendly_measures: FriendlyMeasure[] | null
+  is_global: boolean
+  created_at: string
+}
+
+export interface FridgeItem {
+  id: string
+  user_id: string
+  food_id: string
+  name: string
+  image_url: string | null
+  stock_amount: number
+  stock_unit: string
+  expiration_date: string | null
+  created_at: string
+  updated_at: string
+  food?: Food | null
 }

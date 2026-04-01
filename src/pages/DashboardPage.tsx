@@ -2,9 +2,11 @@ import { useState, useMemo } from 'react'
 import { useMeals, useDeleteMeal } from '@/hooks/useMeals'
 import { useProfile } from '@/hooks/useProfile'
 import { useWater, useUpdateWater } from '@/hooks/useWater'
+import { useUpdateMeal } from '@/hooks/useUpdateMeal'
 import MealCard from '@/components/MealCard'
 import DaySelector from '@/components/DaySelector'
-import type { MealType } from '@/types'
+import EditMealModal from '@/components/EditMealModal'
+import type { MealType, Meal } from '@/types'
 
 const TODAY_ISO = new Date().toISOString().slice(0, 10)
 
@@ -17,11 +19,32 @@ const MEAL_TYPES: { id: MealType; label: string; icon: string }[] = [
 
 export default function DashboardPage() {
   const [selectedDate, setSelectedDate] = useState(TODAY_ISO)
+  const [editingMeal, setEditingMeal] = useState<Meal | null>(null)
   const { data: meals = [], isLoading } = useMeals(selectedDate)
   const { data: profile } = useProfile()
   const { data: waterData } = useWater(selectedDate)
   const deleteMeal = useDeleteMeal()
   const updateWater = useUpdateWater()
+  const { updateMeal, isUpdating } = useUpdateMeal()
+
+  // State for collapsible modules
+  const [collapsedSections, setCollapsedSections] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('gordito_collapsed_sections')
+      return saved ? JSON.parse(saved) : []
+    } catch {
+      return []
+    }
+  })
+
+  const toggleSection = (id: string) => {
+    setCollapsedSections(prev => {
+      const isCollapsed = prev.includes(id)
+      const next = isCollapsed ? prev.filter(s => s !== id) : [...prev, id]
+      localStorage.setItem('gordito_collapsed_sections', JSON.stringify(next))
+      return next
+    })
+  }
 
   // Cálculos de nutrición
   const totals = useMemo(() => meals.reduce(
@@ -62,363 +85,327 @@ export default function DashboardPage() {
       protein: Math.round((goalCalories * (pPct / 100)) / 4),
       carbs: Math.round((goalCalories * (cPct / 100)) / 4),
       fats: Math.round((goalCalories * (fPct / 100)) / 9),
-      sugar: Math.round((goalCalories * 0.05) / 4), // Máximo 5% de kcal en azúcar
-      salt: Number((goalCalories / 400).toFixed(1)) // Aprox 5g para 2000kcal
+      sugar: Math.round((goalCalories * 0.05) / 4),
+      salt: Number((goalCalories / 400).toFixed(1))
     }
   }, [profile, goalCalories])
 
+
   return (
     <div className="min-h-screen bg-[#F8F9FE] -mx-4 -mt-6 px-4 pt-4 pb-32 text-slate-800 font-sans tracking-tight">
-      {/* Header & Day Selector */}
       <DaySelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
       <div className="mt-4 space-y-6">
         {/* Compact Single-Card Nutrition Summary */}
-        <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 space-y-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Calorías consumidas</p>
-              <div className="flex items-baseline gap-1">
-                <span className="text-4xl font-black text-slate-800 tracking-tighter">{totals.calories}</span>
-                <span className="text-xs font-bold text-slate-400">/ {goalCalories} kcal</span>
+        <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
+          <button 
+            onClick={() => toggleSection('nutrition')}
+            className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors text-left"
+          >
+            <div className="flex items-center justify-between flex-1 pr-4">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Calorías consumidas</p>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-black text-slate-800 tracking-tighter">{totals.calories}</span>
+                  <span className="text-xs font-bold text-slate-400">/ {goalCalories} kcal</span>
+                </div>
+              </div>
+              <div className="relative w-16 h-16">
+                 <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                   <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
+                   <circle cx="18" cy="18" r="16" fill="none" className="stroke-[#7B61FF]" strokeWidth="4" 
+                     strokeDasharray={`${Math.min(100, (totals.calories / goalCalories) * 100)} 100`} 
+                     strokeLinecap="round" opacity={totals.calories > goalCalories ? 0.3 : 1} />
+                 </svg>
+                 <div className="absolute inset-0 flex items-center justify-center">
+                   <span className={`text-[10px] font-black ${totals.calories > goalCalories ? 'text-red-500' : 'text-[#7B61FF]'}`}>
+                    {Math.round((totals.calories/goalCalories)*100)}%
+                   </span>
+                 </div>
               </div>
             </div>
-            <div className="relative w-16 h-16">
-               <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                 <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
-                 <circle cx="18" cy="18" r="16" fill="none" className="stroke-[#7B61FF]" strokeWidth="4" 
-                   strokeDasharray={`${Math.min(100, (totals.calories / goalCalories) * 100)} 100`} 
-                   strokeLinecap="round" />
-               </svg>
-               <div className="absolute inset-0 flex items-center justify-center">
-                 <span className="text-[10px] font-black text-[#7B61FF]">{Math.round((totals.calories/goalCalories)*100)}%</span>
-               </div>
+            
+            <div className={`p-2 bg-slate-50 rounded-xl text-slate-400 transition-transform duration-300 ${collapsedSections.includes('nutrition') ? '-rotate-180' : ''}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
             </div>
-          </div>
+          </button>
 
-          {/* Macros Circular Progress Section */}
-          <div className="grid grid-cols-3 gap-2 pt-6 border-t border-slate-50">
+          {!collapsedSections.includes('nutrition') && (
+            <div className="px-6 pb-6 pt-0 animate-fadeIn space-y-6">
+              <div className="grid grid-cols-3 gap-2 pt-6 border-t border-slate-50">
             {/* Protein */}
-            {(() => {
-              const current = totals.protein
-              const goal = macroGoals.protein
-              const pct = Math.min(100, (current / goal) * 100)
-              return (
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Proteínas</p>
-                  <div className="relative w-14 h-14">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
-                      <circle cx="18" cy="18" r="16" fill="none" className="stroke-[#FFA061]" strokeWidth="4" 
-                        strokeDasharray={`${pct} 100`} 
-                        strokeLinecap="round" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-[12px] font-black text-slate-800 leading-none">{Math.round(current)}</span>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
-                      {Math.round(current)}<span className="text-slate-300 mx-1">/</span>{goal}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
-                    </p>
-                  </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Proteínas</p>
+              <div className="relative w-14 h-14">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-[#FFA061]" strokeWidth="4" 
+                    strokeDasharray={`${Math.min(100, (totals.protein / macroGoals.protein) * 100)} 100`} 
+                    strokeLinecap="round" opacity={totals.protein > macroGoals.protein ? 0.3 : 1} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={`text-[12px] font-black leading-none ${totals.protein > macroGoals.protein ? 'text-red-500' : 'text-slate-800'}`}>
+                    {Math.round(totals.protein)}
+                  </span>
                 </div>
-              )
-            })()}
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
+                  {Math.round(totals.protein)}<span className="text-slate-300 mx-1">/</span>{macroGoals.protein}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
+                </p>
+              </div>
+            </div>
 
             {/* Carbs */}
-            {(() => {
-              const current = totals.carbs
-              const goal = macroGoals.carbs
-              const pct = Math.min(100, (current / goal) * 100)
-              return (
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Carbos</p>
-                  <div className="relative w-14 h-14">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
-                      <circle cx="18" cy="18" r="16" fill="none" className="stroke-[#FFCD4B]" strokeWidth="4" 
-                        strokeDasharray={`${pct} 100`} 
-                        strokeLinecap="round" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-[12px] font-black text-slate-800 leading-none">{Math.round(current)}</span>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
-                      {Math.round(current)}<span className="text-slate-300 mx-1">/</span>{goal}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
-                    </p>
-                  </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Carbos</p>
+              <div className="relative w-14 h-14">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-[#FFCD4B]" strokeWidth="4" 
+                    strokeDasharray={`${Math.min(100, (totals.carbs / macroGoals.carbs) * 100)} 100`} 
+                    strokeLinecap="round" opacity={totals.carbs > macroGoals.carbs ? 0.3 : 1} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={`text-[12px] font-black leading-none ${totals.carbs > macroGoals.carbs ? 'text-red-500' : 'text-slate-800'}`}>
+                    {Math.round(totals.carbs)}
+                  </span>
                 </div>
-              )
-            })()}
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
+                  {Math.round(totals.carbs)}<span className="text-slate-300 mx-1">/</span>{macroGoals.carbs}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
+                </p>
+              </div>
+            </div>
 
             {/* Fats */}
-            {(() => {
-              const current = totals.fats
-              const goal = macroGoals.fats
-              const pct = Math.min(100, (current / goal) * 100)
-              return (
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Grasas</p>
-                  <div className="relative w-14 h-14">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
-                      <circle cx="18" cy="18" r="16" fill="none" className="stroke-[#4BB3FF]" strokeWidth="4" 
-                        strokeDasharray={`${pct} 100`} 
-                        strokeLinecap="round" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-[12px] font-black text-slate-800 leading-none">{Math.round(current)}</span>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
-                      {Math.round(current)}<span className="text-slate-300 mx-1">/</span>{goal}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
-                    </p>
-                  </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Grasas</p>
+              <div className="relative w-14 h-14">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-[#4BB3FF]" strokeWidth="4" 
+                    strokeDasharray={`${Math.min(100, (totals.fats / macroGoals.fats) * 100)} 100`} 
+                    strokeLinecap="round" opacity={totals.fats > macroGoals.fats ? 0.3 : 1} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={`text-[12px] font-black leading-none ${totals.fats > macroGoals.fats ? 'text-red-500' : 'text-slate-800'}`}>
+                    {Math.round(totals.fats)}
+                  </span>
                 </div>
-              )
-            })()}
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
+                  {Math.round(totals.fats)}<span className="text-slate-300 mx-1">/</span>{macroGoals.fats}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
+                </p>
+              </div>
+            </div>
           </div>
 
-          {/* Sugar, Salt & Water Circular Progress Section */}
           <div className="grid grid-cols-3 gap-2 pt-8 border-t border-slate-50">
             {/* Sugar */}
-            {(() => {
-              const current = totals.sugar
-              const max = macroGoals.sugar
-              const pct = Math.min(100, (current / max) * 100)
-              const isOver = current >= max
-              const color = '#F472B6' // Always Pink
-              
-              return (
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">🍬 Azúcares</p>
-                  <div className="relative w-14 h-14">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
-                      <circle cx="18" cy="18" r="16" fill="none" stroke={color} strokeWidth="4" 
-                        strokeDasharray={`${pct} 100`} 
-                        strokeLinecap="round" className="transition-all duration-500" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className={`text-[12px] font-black leading-none ${isOver ? 'text-red-600' : 'text-slate-800'} transition-colors duration-300`}>
-                        {Math.round(current)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
-                      {Math.round(current)}<span className="text-slate-300 mx-1">/</span>{max}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
-                    </p>
-                  </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">🍬 Azúcares</p>
+              <div className="relative w-14 h-14">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
+                  <circle cx="18" cy="18" r="16" fill="none" stroke="#F472B6" strokeWidth="4" 
+                    strokeDasharray={`${Math.min(100, (totals.sugar / macroGoals.sugar) * 100)} 100`} 
+                    strokeLinecap="round" opacity={totals.sugar > macroGoals.sugar ? 0.3 : 1} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={`text-[12px] font-black leading-none ${totals.sugar > macroGoals.sugar ? 'text-red-600' : 'text-slate-800'}`}>
+                    {Math.round(totals.sugar)}
+                  </span>
                 </div>
-              )
-            })()}
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
+                  {Math.round(totals.sugar)}<span className="text-slate-300 mx-1">/</span>{macroGoals.sugar}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
+                </p>
+              </div>
+            </div>
 
             {/* Salt */}
-            {(() => {
-              const current = totals.salt
-              const max = macroGoals.salt
-              const pct = Math.min(100, (current / max) * 100)
-              const isOver = current >= max
-              const color = '#94A3B8' // Always Slate
-              
-              return (
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">🧂 Sal</p>
-                  <div className="relative w-14 h-14">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
-                      <circle cx="18" cy="18" r="16" fill="none" stroke={color} strokeWidth="4" 
-                        strokeDasharray={`${pct} 100`} 
-                        strokeLinecap="round" className="transition-all duration-500" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className={`text-[12px] font-black leading-none ${isOver ? 'text-red-600' : 'text-slate-800'} transition-colors duration-300`}>
-                        {current.toFixed(1)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
-                      {current.toFixed(1)}<span className="text-slate-300 mx-1">/</span>{max.toFixed(1)}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
-                    </p>
-                  </div>
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">🧂 Sal</p>
+              <div className="relative w-14 h-14">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
+                  <circle cx="18" cy="18" r="16" fill="none" stroke="#94A3B8" strokeWidth="4" 
+                    strokeDasharray={`${Math.min(100, (totals.salt / macroGoals.salt) * 100)} 100`} 
+                    strokeLinecap="round" opacity={totals.salt > macroGoals.salt ? 0.3 : 1} />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={`text-[12px] font-black leading-none ${totals.salt > macroGoals.salt ? 'text-red-600' : 'text-slate-800'}`}>
+                    {totals.salt.toFixed(1)}
+                  </span>
                 </div>
-              )
-            })()}
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
+                  {totals.salt.toFixed(1)}<span className="text-slate-300 mx-1">/</span>{macroGoals.salt.toFixed(1)}<span className="text-[8px] text-slate-400 font-bold ml-0.5">g</span>
+                </p>
+              </div>
+            </div>
 
-            {/* Water */}
-            {(() => {
-              const currentMl = waterData?.ml_consumed || 0
-              const currentL = currentMl / 1000
-              const goalL = profile?.water_goal_liters || 2.0
-              const pct = Math.min(100, (currentL / goalL) * 100)
-              
-              return (
-                <div className="flex flex-col items-center gap-3">
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">💧 Agua</p>
-                  <div className="relative w-14 h-14">
-                    <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                      <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
-                      <circle cx="18" cy="18" r="16" fill="none" stroke="#0EA5E9" strokeWidth="4" 
-                        strokeDasharray={`${pct} 100`} 
-                        strokeLinecap="round" className="transition-all duration-500" />
-                    </svg>
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-[11px] font-black text-slate-800 leading-none">
-                        {currentL.toFixed(2)}<span className="text-[7px] text-slate-400 font-bold ml-0.5">L</span>
-                      </span>
-                    </div>
-                  </div>
-                  <div className="text-center">
-                    <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
-                      {currentL.toFixed(2)}<span className="text-slate-300 mx-1">/</span>{goalL.toFixed(1)}<span className="text-[8px] text-slate-400 font-bold ml-0.5">L</span>
-                    </p>
-                  </div>
+            {/* Water Shortcut Mini Progress */}
+            <div className="flex flex-col items-center gap-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider flex items-center gap-1">💧 Agua</p>
+              <div className="relative w-14 h-14">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                  <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-50" strokeWidth="4" />
+                  <circle cx="18" cy="18" r="16" fill="none" stroke="#0EA5E9" strokeWidth="4" 
+                    strokeDasharray={`${Math.min(100, ((waterData?.ml_consumed || 0) / 1000 / (profile?.water_goal_liters || 2.0)) * 100)} 100`} 
+                    strokeLinecap="round" />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="text-[11px] font-black text-slate-800 leading-none">
+                    {((waterData?.ml_consumed || 0) / 1000).toFixed(2)}L
+                  </span>
                 </div>
-              )
-            })()}
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] font-black text-slate-800 tracking-tight leading-tight">
+                  {((waterData?.ml_consumed || 0) / 1000).toFixed(2)}<span className="text-slate-300 mx-1">/</span>{(profile?.water_goal_liters || 2.0).toFixed(1)}<span className="text-[8px] text-slate-400 font-bold ml-0.5">L</span>
+                </p>
+              </div>
+            </div>
           </div>
         </div>
+      )}
+    </div>
 
         {/* Water Tracker Module */}
-        <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100 flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-black text-slate-800 tracking-tighter">Hidratación</h2>
-              <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Registrar consumo de agua</p>
+        <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
+          <button 
+            onClick={() => toggleSection('water')}
+            className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors text-left"
+          >
+            <div className="flex items-center gap-3">
+              <div className="bg-sky-50 p-2 rounded-2xl">
+                <span className="text-xl">💧</span>
+              </div>
+              <div>
+                <h2 className="text-lg font-black text-slate-800 tracking-tighter">Hidratación</h2>
+                <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  {((waterData?.ml_consumed || 0) / 1000).toFixed(2)}L de {(profile?.water_goal_liters || 2.0).toFixed(1)}L
+                </p>
+              </div>
             </div>
-            <div className="bg-sky-50 p-2 rounded-2xl">
-              <span className="text-xl">💧</span>
+            <div className={`p-2 bg-slate-50 rounded-xl text-slate-400 transition-transform duration-300 ${collapsedSections.includes('water') ? '-rotate-180' : ''}`}>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
             </div>
-          </div>
+          </button>
 
-          <div className="grid grid-cols-4 gap-x-6 gap-y-8 justify-items-center py-2">
-            {(() => {
-              const currentMl = waterData?.ml_consumed || 0
-              const currentGlasses = Math.floor(currentMl / 250)
-              const goalL = profile?.water_goal_liters || 2.0
-              const goalGlasses = Math.ceil(goalL / 0.25)
-              
-              // We show up to goalGlasses, or more if the user drank more
-              const totalToDisplay = Math.max(goalGlasses, currentGlasses + 1)
-              
-              return Array.from({ length: totalToDisplay }).map((_, i) => {
-                const isFull = i < currentGlasses
-                const isNext = i === currentGlasses
-                
-                return (
-                  <button
-                    key={i}
-                    onClick={() => {
-                      // If clicking a full glass, we remove it. If empty, we add one.
-                      const newMl = isFull ? (currentGlasses - 1) * 250 : (currentGlasses + 1) * 250
-                      updateWater.mutate({ date: selectedDate, ml: Math.max(0, newMl) })
-                    }}
-                    className="relative w-10 h-12 transition-all duration-300 transform active:scale-95 flex items-center justify-center group"
-                  >
-                    {/* Glass SVG */}
-                    <div className="relative w-7 h-10">
-                      <svg viewBox="0 0 24 32" className="w-full h-full drop-shadow-sm">
-                        {/* Define liquid clip path */}
-                        <defs>
-                          <clipPath id={`water-clip-${i}`}>
-                            <rect 
-                              x="0" 
-                              y={isFull ? "0" : "32"} 
-                              width="24" 
-                              height="32" 
-                              className="transition-all duration-700 ease-out" 
-                            />
-                          </clipPath>
-                        </defs>
-                        
-                        {/* Glass Body / Water */}
-                        <path 
-                          d="M4 2 L20 2 L18 28 C17.8 30 16 31 14 31 L10 31 C8 31 6.2 30 6 28 L4 2 Z" 
-                          fill={isFull ? '#E0F2FE' : '#F8FAFC'} 
-                          stroke={isFull ? '#0EA5E9' : '#E2E8F0'} 
-                          strokeWidth="1.5"
-                          className="transition-colors duration-500"
-                        />
-                        
-                        {/* Liquid inside - matches glass shape exactly using clipPath */}
-                        <path 
-                          d="M4 2 L20 2 L18 28 C17.8 30 16 31 14 31 L10 31 C8 31 6.2 30 6 28 L4 2 Z" 
-                          fill="#0EA5E9"
-                          clipPath={`url(#water-clip-${i})`}
-                          className="transition-all duration-500"
-                        />
-
-                        {/* Reflections and Shine */}
-                        <path d="M7 6 L7 24" stroke="white" strokeWidth="0.8" strokeLinecap="round" opacity={isFull ? "0.4" : "0.2"} />
-                        <path d="M17 5 L18 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" />
-                      </svg>
-                    </div>
-
-                    {isNext && !isFull && (
-                      <div className="absolute top-0 right-0">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-200 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-100"></span>
-                        </span>
-                      </div>
-                    )}
-                  </button>
-                )
-              })
-            })()}
-          </div>
-          
-          <div className="flex justify-between items-center px-2">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Vaso = 250ml</span>
-            <span className="text-[11px] font-black text-sky-600">
-              {((waterData?.ml_consumed || 0) / 1000).toFixed(2)}L de { (profile?.water_goal_liters || 2.0).toFixed(1)}L
-            </span>
-          </div>
+          {!collapsedSections.includes('water') && (
+            <div className="px-6 pb-6 pt-0 flex flex-col gap-6 animate-fadeIn">
+              <div className="grid grid-cols-4 gap-x-6 gap-y-8 justify-items-center py-2">
+                {(() => {
+                  const currentMl = waterData?.ml_consumed || 0
+                  const currentGlasses = Math.floor(currentMl / 250)
+                  const goalL = profile?.water_goal_liters || 2.0
+                  const goalGlasses = Math.ceil(goalL / 0.25)
+                  const totalToDisplay = Math.max(goalGlasses, currentGlasses + 1)
+                  
+                  return Array.from({ length: totalToDisplay }).map((_, i) => {
+                    const isFull = i < currentGlasses
+                    const isNext = i === currentGlasses
+                    return (
+                      <button
+                        key={i}
+                        onClick={() => {
+                          const newMl = isFull ? (currentGlasses - 1) * 250 : (currentGlasses + 1) * 250
+                          updateWater.mutate({ date: selectedDate, ml: Math.max(0, newMl) })
+                        }}
+                        className="relative w-10 h-12 transition-all duration-300 transform active:scale-95 flex items-center justify-center group"
+                      >
+                        <div className="relative w-7 h-10">
+                          <svg viewBox="0 0 24 32" className="w-full h-full drop-shadow-sm">
+                            <defs>
+                              <clipPath id={`water-clip-${i}`}>
+                                <rect x="0" y={isFull ? "0" : "32"} width="24" height="32" className="transition-all duration-700 ease-out" />
+                              </clipPath>
+                            </defs>
+                            <path d="M4 2 L20 2 L18 28 C17.8 30 16 31 14 31 L10 31 C8 31 6.2 30 6 28 L4 2 Z" fill={isFull ? '#E0F2FE' : '#F8FAFC'} stroke={isFull ? '#0EA5E9' : '#E2E8F0'} strokeWidth="1.5" className="transition-colors duration-500" />
+                            <path d="M4 2 L20 2 L18 28 C17.8 30 16 31 14 31 L10 31 C8 31 6.2 30 6 28 L4 2 Z" fill="#0EA5E9" clipPath={`url(#water-clip-${i})`} className="transition-all duration-500" />
+                            <path d="M7 6 L7 24" stroke="white" strokeWidth="0.8" strokeLinecap="round" opacity={isFull ? "0.4" : "0.2"} />
+                            <path d="M17 5 L18 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" opacity="0.3" />
+                          </svg>
+                        </div>
+                        {isNext && !isFull && (
+                          <div className="absolute top-0 right-0">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-200 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-100"></span>
+                            </span>
+                          </div>
+                        )}
+                      </button>
+                    )
+                  })
+                })()}
+              </div>
+              <div className="flex justify-between items-center px-2">
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Vaso = 250ml</span>
+                <span className="text-[11px] font-black text-sky-600">
+                  {((waterData?.ml_consumed || 0) / 1000).toFixed(2)}L registrados
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Categorized Meal List */}
-        <div className="space-y-8 mt-8">
+        {/* Edit Modal */}
+        {editingMeal && (
+          <EditMealModal 
+            meal={editingMeal} 
+            onClose={() => setEditingMeal(null)} 
+            onUpdate={updateMeal}
+            isUpdating={isUpdating}
+          />
+        )}
+
+        <div className="space-y-6 mt-8">
            {MEAL_TYPES.map((type) => {
              const groupMeals = mealsByType[type.id]
+             const isCollapsed = collapsedSections.includes(type.id)
+             
              return (
                <section key={type.id} className="space-y-3">
-                 <div className="flex items-center gap-2 px-1">
+                 <button 
+                  onClick={() => toggleSection(type.id)}
+                  className="w-full flex items-center gap-2 px-1 hover:opacity-70 transition-opacity"
+                 >
                    <span className="text-lg">{type.icon}</span>
-                   <h3 className="text-sm font-black text-slate-800 tracking-tight flex-1">
+                   <h3 className="text-sm font-black text-slate-800 tracking-tight flex-1 flex items-center gap-2">
                      {type.label}
+                     <svg className={`w-3 h-3 text-slate-300 transition-transform duration-300 ${isCollapsed ? '-rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M19 9l-7 7-7-7" /></svg>
                    </h3>
                    {groupMeals.length > 0 && (
                      <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
                        {groupMeals.reduce((s, m) => s + m.calories, 0)} kcal
                      </span>
                    )}
-                 </div>
+                 </button>
                  
-                 <div className="space-y-2">
-                   {groupMeals.length > 0 ? (
-                     groupMeals.map(meal => (
-                       <MealCard key={meal.id} meal={meal} onDelete={() => deleteMeal.mutate(meal.id)} />
-                     ))
-                   ) : (
-                     <div className="h-14 border-2 border-dashed border-slate-100 rounded-2xl flex items-center justify-center text-[11px] text-slate-300 font-bold bg-white/50">
-                        No hay registros
-                     </div>
-                   )}
-                 </div>
+                 {!isCollapsed && (
+                   <div className="space-y-2 animate-fadeIn">
+                     {groupMeals.length > 0 ? (
+                       groupMeals.map(meal => (
+                         <MealCard key={meal.id} meal={meal} onDelete={() => deleteMeal.mutate(meal.id)} onClick={() => setEditingMeal(meal)} />
+                       ))
+                     ) : (
+                       <div className="h-14 border-2 border-dashed border-slate-100 rounded-2xl flex items-center justify-center text-[11px] text-slate-300 font-bold bg-white/50">No hay registros</div>
+                     )}
+                   </div>
+                 )}
                </section>
              )
            })}
         </div>
-
-        {isLoading && (
-          <div className="text-center py-8 text-slate-400 text-sm">Cargando datos...</div>
-        )}
+        {isLoading && <div className="text-center py-8 text-slate-400 text-sm">Cargando datos...</div>}
       </div>
     </div>
   )
