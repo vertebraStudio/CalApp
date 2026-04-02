@@ -209,6 +209,7 @@ export default function Navbar() {
               id: food.food_id,
               food_name: food.food_name,
               brand_name: food.brand_name,
+              categoria: food.categoria,
               calories: food.params_per_100g.calories,
               macros: {
                 p: food.params_per_100g.macros.p,
@@ -226,7 +227,31 @@ export default function Navbar() {
           }}
         />
       )}
-      {showDirect && <DirectManualEntry initialData={sharedData} onClose={() => { setShowDirect(false); setSharedData(null); }} />}
+      {showDirect && <DirectManualEntry 
+        initialData={sharedData} 
+        onClose={() => { setShowDirect(false); setSharedData(null); }} 
+        onSuccess={async (_foodId, diaryEntry) => {
+          // Calculate Default Meal Type based on time (duplicated logic from ManualSearch for now)
+          const hour = new Date().getHours()
+          let defaultType: 'breakfast' | 'lunch' | 'snack' | 'dinner' = 'lunch'
+          if (hour >= 5 && hour < 11) defaultType = 'breakfast'
+          else if (hour >= 11 && hour < 16) defaultType = 'lunch'
+          else if (hour >= 16 && hour < 20) defaultType = 'snack'
+          else defaultType = 'dinner'
+
+          const ok = await saveMeal({
+            ...diaryEntry,
+            meal_type: diaryEntry.meal_type || defaultType
+          })
+          
+          if (ok) {
+            setShowDirect(false)
+            setSharedData(null)
+          } else {
+            alert('El alimento se guardó en la comunidad pero no se pudo registrar tu ingesta. Revisa tu conexión.')
+          }
+        }}
+      />}
       {showFridgeAdd && (
         <AddToFridge 
           onClose={() => {

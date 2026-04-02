@@ -14,6 +14,7 @@ export interface MealEntryData {
     salt?: number
   }
   meal_type: 'breakfast' | 'lunch' | 'snack' | 'dinner'
+  categoria?: string | null
   image_url?: string | null
   // Base values for precision editing
   base_values?: {
@@ -58,6 +59,7 @@ export function useSaveMealEntry() {
           sugar: data.macros.sugar ?? 0,
           salt: data.macros.salt ?? 0,
           meal_type: data.meal_type,
+          categoria: data.categoria || null,
           image_url: data.image_url || null,
           // New base values columns
           base_calories: data.base_values?.calories,

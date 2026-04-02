@@ -232,6 +232,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
       },
       meal_type: selectedMealType,
       image_url: selectedFood.image_url,
+      categoria: selectedFood.categoria,
       base_values: {
         calories: selectedFood.params_per_100g.calories,
         p: selectedFood.params_per_100g.macros.p,
@@ -569,7 +570,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
               </div>
 
               <button
-                onClick={() => onFoodSelected({})}
+                onClick={() => onEditFood({})}
                 className="mx-auto flex items-center gap-2 bg-[#7B61FF]/10 text-[#7B61FF] px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#7B61FF] hover:text-white transition-all border-2 border-[#7B61FF]/20"
               >
                 <span>Añadir alimento nuevo</span>

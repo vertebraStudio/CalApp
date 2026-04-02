@@ -29,6 +29,7 @@ interface DirectManualEntryProps {
 export default function DirectManualEntry({ onClose, onSuccess, initialData }: DirectManualEntryProps) {
   const { user } = useAuth()
   const [isSaving, setIsSaving] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false)
 
   const [name, setName] = useState('')
   const [brand, setBrand] = useState('')
@@ -261,6 +262,10 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
     if (!name || !calories) return
 
     if (calories && name.length > 2) {
+      if (initialData?.id && !showConfirmModal) {
+        setShowConfirmModal(true)
+        return
+      }
       setIsSaving(true)
       // Calculate values per 100g based on the reference portion
       const numAmount = parseFloat(amount) || 100
@@ -310,7 +315,34 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
           alert(`Error al guardar: ${globalErr.message}`)
         } else {
           if (onSuccess && globalData?.[0]) {
-            onSuccess(globalData[0].id, globalData[0])
+            // Prepare a comprehensive object for the diary entry
+            const diaryEntry = {
+              food_id: globalData[0].id,
+              food_name: name.trim() + (brand ? ` (${brand.trim()})` : ''),
+              calories: Math.round(parseFloat(calories)),
+              macros: {
+                p: parseFloat(protein) || 0,
+                c: parseFloat(carbs) || 0,
+                f: parseFloat(fats) || 0,
+                sugar: parseFloat(sugar) || 0,
+                salt: parseFloat(salt) || 0
+              },
+              categoria: categoria,
+              image_url: imageUrl,
+              base_values: {
+                calories: globalData[0].calories_per_100g,
+                p: globalData[0].protein_per_100g,
+                c: globalData[0].carbs_per_100g,
+                f: globalData[0].fats_per_100g,
+                sugar: globalData[0].sugar_per_100g,
+                salt: globalData[0].salt_per_100g,
+                serving_size_g: globalData[0].serving_size_g,
+                serving_unit: globalData[0].serving_unit,
+                base_unit: globalData[0].base_unit,
+                is_liquid: globalData[0].base_unit === 'ml'
+              }
+            }
+            onSuccess(globalData[0].id, diaryEntry)
           }
           onClose()
         }
@@ -655,6 +687,38 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
 
           </form>
         </div>
+
+        {/* Confirmation Modal */}
+        {showConfirmModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-6 animate-fadeIn">
+            <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slideUp">
+              <div className="p-8 text-center">
+                <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-sm">⚠️</div>
+                <h3 className="text-xl font-black text-slate-800 mb-3 tracking-tight">¿Estás seguro?</h3>
+                <p className="text-sm font-bold text-slate-400 leading-relaxed">
+                  Estás a punto de modificar un alimento de la <span className="text-[#7B61FF]">comunidad</span>. Estos cambios serán visibles para todos los usuarios.
+                </p>
+              </div>
+              <div className="p-6 bg-slate-50 flex flex-col gap-3">
+                <button
+                  onClick={() => {
+                    setShowConfirmModal(false)
+                    handleSubmit({ preventDefault: () => {} } as any)
+                  }}
+                  className="w-full bg-[#7B61FF] text-white font-black py-4 rounded-2xl shadow-lg shadow-purple-100 active:scale-95 transition-all"
+                >
+                  Confirmar y Guardar
+                </button>
+                <button
+                  onClick={() => setShowConfirmModal(false)}
+                  className="w-full bg-white text-slate-400 font-black py-4 rounded-2xl border border-slate-200 active:scale-95 transition-all text-xs uppercase tracking-widest"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="p-6 bg-white border-t border-slate-100 shrink-0">
