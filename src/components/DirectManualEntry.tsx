@@ -10,9 +10,9 @@ interface DirectManualEntryProps {
     food_name: string
     brand_name?: string
     calories: number
-    macros: { 
-      p: number; 
-      c: number; 
+    macros: {
+      p: number;
+      c: number;
       f: number;
       sugar?: number;
       salt?: number;
@@ -31,6 +31,57 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
   const [isSaving, setIsSaving] = useState(false)
   const [showConfirmModal, setShowConfirmModal] = useState(false)
 
+  // Gesture state
+  const [isClosing, setIsClosing] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const touchStartY = useRef<number | null>(null)
+  const DRAG_THRESHOLD = 150
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY
+    setIsDragging(true)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return
+    const currentY = e.touches[0].clientY
+    const deltaY = currentY - touchStartY.current
+    if (deltaY > 0) {
+      setDragOffset(deltaY)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (dragOffset > DRAG_THRESHOLD) {
+      setIsClosing(true)
+      setDragOffset(window.innerHeight)
+      setTimeout(onClose, 300)
+    } else {
+      setDragOffset(0)
+    }
+    setIsDragging(false)
+    touchStartY.current = null
+  }
+
+  const dragStyles = {
+    transform: `translateY(${dragOffset}px)`,
+    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+  }
+
+  const overlayStyles = {
+    opacity: isClosing ? 0 : Math.max(0, 1 - (dragOffset / 300)),
+    transition: isDragging ? 'none' : 'opacity 0.3s ease-out',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backdropFilter: 'blur(2px)'
+  }
+
+  const DragHandle = () => (
+    <div className="w-full flex justify-center pt-3 pb-1">
+      <div className="w-12 h-1.5 bg-black/10 rounded-full pointer-events-none" />
+    </div>
+  )
+
   const [name, setName] = useState('')
   const [brand, setBrand] = useState('')
   const [categoria, setCategoria] = useState<string>('Verduras')
@@ -43,8 +94,8 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
   const [imageUrl, setImageUrl] = useState<string | null>(null)
 
   const CATEGORIES = [
-    'Verduras', 'Frutas', 'Snacks', 'Carne', 'Pescado', 'Cereales', 
-    'Frutos Secos', 'Lácteos', 'Legumbres', 'Bebidas', 'Platos Preparados', 
+    'Verduras', 'Frutas', 'Snacks', 'Carne', 'Pescado', 'Cereales',
+    'Frutos Secos', 'Lácteos', 'Legumbres', 'Bebidas', 'Platos Preparados',
     'Congelados', 'Panadería'
   ]
 
@@ -80,7 +131,7 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
       setSugar(initialData.macros?.sugar?.toString() || '')
       setSalt(initialData.macros?.salt?.toString() || '')
       setImageUrl(initialData.image_url || null)
-      
+
       if (initialData.serving_size_g) {
         setAmount('1')
         setUnit(initialData.serving_unit || 'ración')
@@ -145,7 +196,7 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
       }
 
       if (!data) throw new Error('No se recibió respuesta del servidor de análisis.')
-      
+
       const result = data as {
         food_name: string
         brand: string
@@ -271,7 +322,7 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
       const numAmount = parseFloat(amount) || 100
       const isServingUnit = ['ración', 'unidad', 'vaso', 'lata'].includes(unit)
       const sWeight = isServingUnit ? parseFloat(servingWeight) || 0 : 0
-      
+
       const totalWeightGrams = isServingUnit ? (numAmount * sWeight) : numAmount
       const factor = totalWeightGrams > 0 ? (100 / totalWeightGrams) : 1
 
@@ -355,28 +406,48 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 sm:p-6 animate-fadeIn pb-20 sm:pb-6">
-      <div className="bg-white w-full max-w-md rounded-[2rem] shadow-2xl flex flex-col max-h-[82vh] overflow-hidden animate-slideUp">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center">
+      <div
+        className="absolute inset-0 animate-fadeIn"
+        style={overlayStyles}
+        onClick={() => {
+          setIsClosing(true);
+          setDragOffset(window.innerHeight);
+          setTimeout(onClose, 300);
+        }}
+      />
+      <div
+        className={`bg-[#FFF156] w-full max-w-md rounded-t-[3rem] border-t-4 border-black shadow-2xl flex flex-col h-[95vh] overflow-hidden relative ${isClosing ? '' : 'animate-slideUp'}`}
+        style={dragStyles}
+      >
+        <div
+          className="shrink-0 touch-none cursor-grab active:cursor-grabbing border-b-2 border-black/10"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
+          <DragHandle />
 
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-slate-100 shrink-0">
-          <div>
-            <h3 className="text-xl font-black text-slate-800 tracking-tight">
-              {initialData?.id ? 'Modificar Alimento' : 'Registro Directo'}
-            </h3>
-            <p className="text-xs font-semibold text-slate-400 mt-1">
-              {initialData?.id ? 'Actualizando datos de la comunidad' : 'Nuevo alimento para la comunidad'}
-            </p>
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 pt-2">
+            <div>
+              <h3 className="text-xl font-black text-slate-800 tracking-tight">
+                {initialData?.id ? 'Modificar Alimento' : 'Registrar Alimento'}
+              </h3>
+              <p className="text-[10px] font-semibold text-[#475569] mt-1">
+                {initialData?.id ? 'Actualizando datos de la comunidad' : 'Nuevo alimento para la comunidad'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-12 h-12 bg-white border-2 border-black flex items-center justify-center rounded-2xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-3 bg-slate-50 text-slate-400 hover:text-slate-600 rounded-2xl transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
 
         {/* Content */}
@@ -386,7 +457,7 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
             {/* Cover Photo Selection */}
             {!imageUrl ? (
               <div
-                className="bg-slate-50 p-8 rounded-[2.5rem] border-2 border-dashed border-slate-100 flex flex-col items-center gap-4 group transition-all hover:bg-slate-100/50 active:scale-[0.98] cursor-pointer"
+                className="bg-white p-8 rounded-[2.5rem] border-2 border-black flex flex-col items-center gap-4 group transition-all hover:bg-slate-50 active:scale-[0.98] cursor-pointer shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]"
                 onClick={() => fileRef.current?.click()}
               >
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => {
@@ -420,7 +491,7 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nombre del alimento..."
-                  className="w-full bg-slate-50 text-slate-800 p-4 rounded-2xl font-black text-base text-center border-2 border-transparent focus:border-[#7B61FF]/10 focus:bg-white transition-all outline-none"
+                  className="w-full bg-white text-[#475569] p-4 rounded-2xl font-black text-base text-center border-2 border-black focus:border-[#7B61FF] transition-all outline-none"
                 />
               </div>
 
@@ -429,19 +500,19 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
                 value={brand}
                 onChange={(e) => setBrand(e.target.value)}
                 placeholder="Marca (Ej: Hacendado, Danone...)"
-                className="w-full bg-slate-50 text-slate-800 p-4 rounded-2xl font-black text-base text-center border-2 border-transparent focus:border-slate-100 focus:bg-white transition-all outline-none"
+                className="w-full bg-white text-[#475569] p-4 rounded-2xl font-black text-base text-center border-2 border-black focus:border-[#7B61FF] transition-all outline-none"
               />
 
-              <div className="bg-slate-50 p-4 rounded-2xl border-2 border-transparent focus-within:border-slate-100 focus-within:bg-white transition-all">
+              <div className="bg-white p-4 rounded-2xl border-2 border-black focus-within:border-[#7B61FF] transition-all">
                 <div className="flex items-center justify-between mb-2 px-1">
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Categoría del Alimento</span>
+                  <span className="text-[10px] font-black text-[#475569] uppercase tracking-widest">Categoría del Alimento</span>
                   <span className="text-[8px] font-black text-[#7B61FF] bg-[#7B61FF]/10 px-2 py-0.5 rounded-full">OBLIGATORIO</span>
                 </div>
-                <select 
+                <select
                   required
                   value={categoria}
                   onChange={(e) => setCategoria(e.target.value)}
-                  className="w-full bg-transparent text-slate-800 font-black text-base outline-none cursor-pointer appearance-none capitalize pl-1"
+                  className="w-full bg-transparent text-[#475569] font-black text-base outline-none cursor-pointer appearance-none capitalize pl-1"
                 >
                   {CATEGORIES.map(cat => (
                     <option key={cat} value={cat}>{cat}</option>
@@ -518,27 +589,25 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
                 type="button"
                 disabled={scanState === 'uploading' || scanState === 'analyzing'}
                 onClick={() => document.getElementById('ai-scan-input')?.click()}
-                className="w-full bg-gradient-to-r from-[#7B61FF] to-[#A78BFA] hover:from-[#684DEC] hover:to-[#9061F9] disabled:opacity-50 disabled:cursor-not-allowed text-white py-3.5 rounded-2xl flex items-center justify-center gap-2.5 group transition-all active:scale-[0.98] shadow-lg shadow-purple-200"
+                className="w-full bg-[#7B61FF] text-white py-4 rounded-[24px] border-2 border-black flex items-center justify-center gap-2.5 group transition-all active:translate-x-1 active:translate-y-1 active:shadow-none shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="text-lg">✨</span>
+
                 <div className="flex flex-col items-start">
                   <span className="text-xs font-black uppercase tracking-widest leading-tight">Escanear etiqueta nutricional</span>
-                  <span className="text-[8px] font-bold text-white/70 leading-tight">Autocompletar con IA</span>
                 </div>
-                <svg className="w-4 h-4 ml-auto opacity-70 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
               </button>
 
-              {/* Porción de Referencia */}
-              <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 space-y-4 relative z-10">
+              {/* Porción de Referencia & Calorías */}
+              <div className="bg-white rounded-[40px] p-6 space-y-6 border-2 border-black/5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[10px] font-black text-[#7B61FF] uppercase tracking-widest">Porción de Referencia</span>
-                  <div className="px-2 py-0.5 bg-[#7B61FF]/10 text-[#7B61FF] text-[8px] font-bold rounded-full">OBLIGATORIO</div>
+                  <span className="text-[10px] font-black text-[#7B61FF] uppercase tracking-widest">Porción a Registrar</span>
+                  <div className="px-2 py-0.5 bg-[#7B61FF] text-white text-[8px] font-black rounded-full border-2 border-black">OBLIGATORIO</div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-                    <span className="text-[9px] font-bold text-slate-400 mb-2">Cantidad</span>
-                    <div className="flex items-center justify-between gap-1">
+
+                <div className="space-y-4">
+                  {/* Amount and Unit selectors */}
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 flex gap-2">
                       {!['g', 'ml'].includes(unit) && (
                         <button
                           type="button"
@@ -546,25 +615,27 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
                             const val = parseFloat(prev) || 0;
                             return Math.max(0, val - 1).toString();
                           })}
-                          className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-lg transition-all active:scale-90"
+                          className="w-11 h-11 flex items-center justify-center shrink-0 bg-white text-[#7B61FF] rounded-xl transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
                         </button>
                       )}
-                      <div className="flex-1 flex items-baseline justify-center gap-1 min-w-0">
+
+                      <div className="flex-1 flex items-center justify-center bg-white border-2 border-black rounded-xl h-11 px-2 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                         <input
                           type="number"
                           required
                           value={amount}
                           onChange={(e) => setAmount(e.target.value)}
-                          className={`bg-transparent text-slate-800 font-black outline-none min-w-0 ${!['g', 'ml'].includes(unit) ? 'text-xl w-full text-center' : 'text-2xl text-right w-20'}`}
+                          className="w-full bg-transparent text-center font-black text-slate-800 outline-none text-xl"
                         />
                         {['g', 'ml'].includes(unit) && (
-                          <span className="text-xs font-bold text-slate-300 uppercase shrink-0">
+                          <span className="text-xs font-bold text-slate-400 uppercase shrink-0 mr-1">
                             {unit}
                           </span>
                         )}
                       </div>
+
                       {!['g', 'ml'].includes(unit) && (
                         <button
                           type="button"
@@ -572,82 +643,85 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
                             const val = parseFloat(prev) || 0;
                             return (val + 1).toString();
                           })}
-                          className="w-8 h-8 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-lg transition-all active:scale-90"
+                          className="w-11 h-11 flex items-center justify-center shrink-0 bg-white text-[#7B61FF] rounded-xl transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                         </button>
                       )}
                     </div>
-                  </div>
-                  <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
-                    <span className="text-[9px] font-bold text-slate-400 mb-2">Unidad</span>
-                    <select value={unit} onChange={e => setUnit(e.target.value)} className="w-full bg-transparent text-sm font-black text-slate-800 capitalize outline-none cursor-pointer">
-                      <option value="g">Gramos (g)</option>
-                      <option value="ml">Mililitros (ml)</option>
-                      <option value="ración">Ración</option>
-                      <option value="unidad">Unidad</option>
-                      <option value="vaso">Vaso</option>
-                      <option value="lata">Lata</option>
-                    </select>
-                  </div>
-                </div>
 
-                {['ración', 'unidad', 'vaso', 'lata'].includes(unit) && (
-                  <div className="bg-amber-50 p-4 rounded-2xl border-2 border-amber-100 animate-fadeIn flex flex-col">
-                    <div className="flex items-center justify-between mb-2">
-                       <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Peso de 1 {unit}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                       <input
-                         type="number"
-                         required
-                         placeholder="Ej: 150"
-                         value={servingWeight}
-                         onChange={(e) => setServingWeight(e.target.value)}
-                         className="flex-1 bg-white text-slate-800 px-3 py-2 rounded-xl font-black text-base border border-amber-200 outline-none"
-                       />
-                       <span className="text-xs font-bold text-amber-500">g/ml</span>
+                    {/* Unit Selector */}
+                    <div className="flex-1 h-11 bg-white border-2 border-black rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] flex items-center px-2">
+                      <select value={unit} onChange={e => setUnit(e.target.value)} className="w-full bg-transparent text-sm font-black text-slate-800 capitalize outline-none cursor-pointer">
+                        <option value="g">Gramos (g)</option>
+                        <option value="ml">Mililitros (ml)</option>
+                        <option value="ración">Ración</option>
+                        <option value="unidad">Unidad</option>
+                        <option value="vaso">Vaso</option>
+                        <option value="lata">Lata</option>
+                      </select>
                     </div>
                   </div>
-                )}
-              </div>
 
-              {/* Calorías */}
-              <div className="bg-slate-50 p-4 rounded-3xl border border-slate-100 flex flex-col justify-between mt-2">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Energía (Kcal)</span>
-                  <span className="text-[9px] font-bold text-slate-400 text-right w-1/2 leading-tight">para {amount} {unit}</span>
+                  {['ración', 'unidad', 'vaso', 'lata'].includes(unit) && (
+                    <div className="bg-[#FFF156]/20 p-4 rounded-xl border-2 border-[#FFF156] flex flex-col">
+                      <span className="text-[9px] font-black text-[#5A43B2] uppercase tracking-widest mb-2">Equivalencia (Peso de 1 {unit})</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="number"
+                          required
+                          placeholder="Ej: 150"
+                          value={servingWeight}
+                          onChange={(e) => setServingWeight(e.target.value)}
+                          className="flex-1 bg-white text-slate-800 px-3 py-2 rounded-xl font-black text-base border-2 border-black outline-none shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                        />
+                        <span className="text-xs font-bold text-slate-600">g/ml</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Calorías */}
+                  <div className="bg-white p-6 rounded-[24px] border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center gap-2 mt-4">
+                    <div className="flex flex-col items-center">
+                      <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Energía Total</span>
+                      <span className="text-[9px] font-bold text-slate-400 uppercase mt-0.5 tracking-widest">En {amount} {unit}</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        required
+                        value={calories}
+                        onChange={(e) => handleManualCal(e.target.value)}
+                        className="w-28 bg-transparent text-black text-5xl tracking-tighter font-black text-center outline-none"
+                        placeholder="0"
+                      />
+                      <span className="text-2xl font-black text-black">kcal</span>
+                    </div>
+                  </div>
                 </div>
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  required
-                  value={calories}
-                  onChange={(e) => handleManualCal(e.target.value)}
-                  className="w-full bg-white text-slate-800 p-3 rounded-xl font-black text-base text-center border border-slate-100 focus:border-[#FF5C00]/20 focus:ring-4 focus:ring-[#FF5C00]/5 transition-all outline-none"
-                />
               </div>
-
             </div>
 
             {/* Macros Grid */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: 'Prot', val: protein, color: 'blue', fn: handleManualP },
-                { label: 'Carb', val: carbs, color: 'green', fn: handleManualC },
-                { label: 'Fat', val: fats, color: 'orange', fn: handleManualF },
+                { label: 'Proteínas', val: protein, fn: handleManualP },
+                { label: 'Carbohid.', val: carbs, fn: handleManualC },
+                { label: 'Grasas', val: fats, fn: handleManualF },
               ].map(m => (
-                <div key={m.label} className={`bg-slate-50 p-3 rounded-2xl border border-slate-100`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className={`text-[8px] font-black text-${m.color}-400 uppercase tracking-widest`}>{m.label}</span>
-                    <div className={`w-1.5 h-1.5 rounded-full bg-${m.color}-400`}></div>
+                <div key={m.label} className="bg-white rounded-[24px] p-4 border-2 border-black flex flex-col items-center justify-center">
+                  <p className="text-[9px] font-black text-slate-800/40 uppercase tracking-widest leading-none mb-2">{m.label}</p>
+                  <div className="flex items-baseline justify-center w-full">
+                    <input
+                      type="number"
+                      value={m.val}
+                      onChange={(e) => m.fn(e.target.value)}
+                      placeholder="0"
+                      className="w-full bg-transparent text-slate-800 text-xl font-black outline-none text-center leading-none"
+                    />
+                    <span className="text-xs font-black text-slate-800 ml-0.5">g</span>
                   </div>
-                  <input
-                    type="number"
-                    value={m.val}
-                    onChange={(e) => m.fn(e.target.value)}
-                    className="w-full bg-transparent text-slate-800 font-black text-sm outline-none text-center"
-                  />
                 </div>
               ))}
             </div>
@@ -655,63 +729,69 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
             {/* Micro Macros */}
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'Azúcar (g)', val: sugar, icon: '🍬', color: 'pink', fn: handleManualSugar },
-                { label: 'Sal (g)', val: salt, icon: '🧂', color: 'slate', fn: handleManualSalt },
+                { label: 'Azúcares', val: sugar, colorClass: 'bg-[#FCE7F3] text-pink-500', inputClass: 'text-pink-600', fn: handleManualSugar },
+                { label: 'Sal', val: salt, colorClass: 'bg-[#DBEAFE] text-blue-500', inputClass: 'text-blue-700', fn: handleManualSalt },
               ].map(m => (
-                <div key={m.label} className="bg-slate-50 p-4 rounded-2xl border border-slate-100 transition-all focus-within:bg-white focus-within:border-slate-200">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-xs">{m.icon}</span>
-                    <span className={`text-[9px] font-black text-slate-400 uppercase tracking-widest`}>{m.label}</span>
+                <div key={m.label} className={`${m.colorClass.split(' ')[0]} rounded-[24px] p-4 border-2 border-black flex justify-between items-center px-4`}>
+                  <span className={`text-[10px] font-black uppercase tracking-widest min-w-[60px] ${m.colorClass.split(' ')[1]}`}>{m.label}</span>
+                  <div className="flex items-baseline flex-1 min-w-0 justify-end">
+                    <input
+                      type="number"
+                      value={m.val}
+                      onChange={(e) => m.fn(e.target.value)}
+                      placeholder="0"
+                      className={`w-full bg-transparent font-black text-lg outline-none text-right ${m.inputClass}`}
+                    />
+                    <span className={`text-sm font-black ml-0.5 ${m.inputClass}`}>g</span>
                   </div>
-                  <input
-                    type="number"
-                    value={m.val}
-                    onChange={(e) => m.fn(e.target.value)}
-                    placeholder="0"
-                    className={`w-full bg-transparent text-slate-800 font-black text-lg outline-none text-center ${m.color === 'pink' ? 'text-pink-500' : 'text-slate-600'}`}
-                  />
                 </div>
               ))}
             </div>
-
             {/* Community Info Banner */}
-            <div className="bg-[#7B61FF]/5 p-5 rounded-3xl border-2 border-[#7B61FF]/10 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center text-2xl">🌍</div>
+            <div className="bg-[#7B61FF] p-5 rounded-[24px] border-2 border-black flex flex-col items-center gap-2 text-center shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-white mt-8">
+              <span className="text-3xl">🌍</span>
               <div>
-                <p className="text-[10px] font-black uppercase tracking-widest text-[#7B61FF]">Contribución Comunitaria</p>
-                <p className="text-[9px] font-bold text-slate-500 mt-0.5 leading-relaxed">
-                  Este alimento se compartirá con la comunidad para ayudar a otros usuarios con datos reales y verificados. 🤝✨
+                <p className="text-[10px] font-black uppercase tracking-widest text-[#FFF156]">Contribución Comunitaria</p>
+                <p className="text-[10px] font-bold text-white/80 mt-1 leading-relaxed px-4">
+                  Comparte este alimento con la comunidad de manera verificable. 🤝✨
                 </p>
               </div>
             </div>
 
+            <button
+              type="submit"
+              disabled={isSaving || !name || !calories}
+              className="w-full bg-[#7B61FF] text-white border-2 border-black rounded-[32px] py-5 text-xl font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all active:shadow-none active:translate-x-1 active:translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-3 mt-8 mb-4"
+            >
+              {isSaving ? 'Guardando...' : (initialData?.id ? 'Actualizar Alimento' : 'Registrar')}
+            </button>
           </form>
         </div>
 
         {/* Confirmation Modal */}
         {showConfirmModal && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-6 animate-fadeIn">
-            <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl overflow-hidden animate-slideUp">
-              <div className="p-8 text-center">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-900/60 backdrop-blur-md p-6 animate-fadeIn">
+            <div className="bg-[#FFF156] w-full max-w-sm rounded-[2.5rem] shadow-2xl border-4 border-black overflow-hidden animate-slideUp">
+              <div className="p-8 text-center bg-white border-b-4 border-black">
                 <div className="w-20 h-20 bg-amber-50 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6 shadow-sm">⚠️</div>
                 <h3 className="text-xl font-black text-slate-800 mb-3 tracking-tight">¿Estás seguro?</h3>
-                <p className="text-sm font-bold text-slate-400 leading-relaxed">
-                  Estás a punto de modificar un alimento de la <span className="text-[#7B61FF]">comunidad</span>. Estos cambios serán visibles para todos los usuarios.
+                <p className="text-xs font-bold text-[#475569] leading-relaxed">
+                  Vas a modificar un alimento de la <span className="text-[#7B61FF] font-black">comunidad</span> visible para todos los usuarios.
                 </p>
               </div>
-              <div className="p-6 bg-slate-50 flex flex-col gap-3">
+              <div className="p-6 flex flex-col gap-3">
                 <button
                   onClick={() => {
                     setShowConfirmModal(false)
-                    handleSubmit({ preventDefault: () => {} } as any)
+                    handleSubmit({ preventDefault: () => { } } as any)
                   }}
-                  className="w-full bg-[#7B61FF] text-white font-black py-4 rounded-2xl shadow-lg shadow-purple-100 active:scale-95 transition-all"
+                  className="w-full bg-[#7B61FF] text-white border-2 border-black py-4 rounded-[20px] font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-1 active:translate-y-1 transition-all"
                 >
                   Confirmar y Guardar
                 </button>
                 <button
                   onClick={() => setShowConfirmModal(false)}
-                  className="w-full bg-white text-slate-400 font-black py-4 rounded-2xl border border-slate-200 active:scale-95 transition-all text-xs uppercase tracking-widest"
+                  className="w-full bg-white text-black py-4 rounded-[20px] border-2 border-black font-black active:bg-slate-50 transition-all text-xs uppercase tracking-widest"
                 >
                   Cancelar
                 </button>
@@ -719,25 +799,6 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
             </div>
           </div>
         )}
-
-        {/* Footer */}
-        <div className="p-6 bg-white border-t border-slate-100 shrink-0">
-          <button
-            type="submit"
-            form="manual-entry-form"
-            disabled={isSaving || !name || !calories}
-            className="w-full bg-[#7B61FF] hover:bg-[#684DEC] disabled:bg-slate-100 disabled:text-slate-400 text-white font-black text-lg py-5 rounded-[2.5rem] shadow-xl shadow-purple-200 hover:shadow-2xl hover:shadow-purple-200/50 transition-all active:scale-[0.98] flex justify-center items-center gap-3"
-          >
-            {isSaving ? (
-              <div className="w-6 h-6 border-3 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <span>{initialData?.id ? 'Actualizar en Comunidad' : 'Registrar en Comunidad'}</span>
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-              </>
-            )}
-          </button>
-        </div>
 
       </div>
     </div>

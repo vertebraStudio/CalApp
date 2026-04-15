@@ -19,7 +19,7 @@ export default function MealCard({ meal, onDelete, onClick }: MealCardProps) {
   return (
     <div 
       onClick={onClick}
-      className={`bg-white rounded-2xl p-3 flex gap-4 items-center group shadow-sm border border-slate-50 transition-all hover:shadow-md ${onClick ? 'cursor-pointer active:scale-[0.98]' : ''}`}
+      className={`bg-white rounded-2xl p-3 flex gap-4 items-center group shadow-sm border border-slate-50 transition-all ${onClick ? 'cursor-pointer active:scale-[0.98]' : ''}`}
     >
       {/* Imagen */}
       {meal.image_url ? (

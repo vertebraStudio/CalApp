@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/context/AuthContext'
 import { getFriendlyMeasures, normalizeToWeight } from '@/utils/conversions'
@@ -8,7 +8,7 @@ import type { MealEntryData } from '@/hooks/useSaveMealEntry'
 const MEAL_TYPES: { id: MealType; label: string; icon: string }[] = [
   { id: 'breakfast', label: 'Desayuno', icon: '🍳' },
   { id: 'lunch', label: 'Comida', icon: '🥗' },
-  { id: 'snack', label: 'Merienda', icon: '🍎' },
+  { id: 'snack', label: 'Snacks', icon: '🍎' },
   { id: 'dinner', label: 'Cena', icon: '🍲' },
 ]
 
@@ -35,6 +35,57 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
   const [results, setResults] = useState<any[]>([])
   const [recentMeals, setRecentMeals] = useState<any[]>([])
   const [loadingSearch, setLoadingSearch] = useState(false)
+
+  // Gesture state
+  const [isClosing, setIsClosing] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
+  const [isDragging, setIsDragging] = useState(false)
+  const touchStartY = useRef<number | null>(null)
+  const DRAG_THRESHOLD = 150
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartY.current = e.touches[0].clientY
+    setIsDragging(true)
+  }
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY.current === null) return
+    const currentY = e.touches[0].clientY
+    const deltaY = currentY - touchStartY.current
+    if (deltaY > 0) {
+      setDragOffset(deltaY)
+    }
+  }
+
+  const handleTouchEnd = () => {
+    if (dragOffset > DRAG_THRESHOLD) {
+      setIsClosing(true)
+      setDragOffset(window.innerHeight)
+      setTimeout(onClose, 300)
+    } else {
+      setDragOffset(0)
+    }
+    setIsDragging(false)
+    touchStartY.current = null
+  }
+
+  const dragStyles = {
+    transform: `translateY(${dragOffset}px)`,
+    transition: isDragging ? 'none' : 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+  }
+
+  const overlayStyles = {
+    opacity: isClosing ? 0 : Math.max(0, 1 - (dragOffset / 300)),
+    transition: isDragging ? 'none' : 'opacity 0.3s ease-out',
+    backgroundColor: 'rgba(15, 23, 42, 0.4)',
+    backdropFilter: 'blur(2px)'
+  }
+
+  const DragHandle = () => (
+    <div className="w-full flex justify-center pt-3 pb-1">
+      <div className="w-12 h-1.5 bg-black/10 rounded-full pointer-events-none" />
+    </div>
+  )
 
   const CATEGORIES = [
     { id: 'Verduras', icon: '🥦' },
@@ -73,7 +124,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
           if (!b) return null
           return b.split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
         }).filter(Boolean) as string[]
-        
+
         const uniqueBrands = Array.from(new Set(normalized)).sort()
         setBrands(uniqueBrands)
       }
@@ -201,7 +252,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
       serving_size_g: selectedFood.serving_size_g,
       friendly_measures: selectedFood.friendly_measures
     })
-    
+
     const ratio = weight / 100
     const finalCalories = Math.round(selectedFood.params_per_100g.calories * ratio)
     const finalP = Number((selectedFood.params_per_100g.macros.p * ratio).toFixed(1))
@@ -256,7 +307,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
       serving_size_g: selectedFood.serving_size_g,
       friendly_measures: selectedFood.friendly_measures
     })
-    
+
     const ratio = weight / 100
     const currentCal = Math.round(selectedFood.params_per_100g.calories * ratio)
     const currentP = (selectedFood.params_per_100g.macros.p * ratio).toFixed(1)
@@ -266,382 +317,410 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood }: Ma
     const currentSalt = ((selectedFood.params_per_100g.macros.salt || 0) * ratio).toFixed(2)
 
     const friendlyMeasures = getFriendlyMeasures(
-      !!selectedFood.is_liquid, 
+      !!selectedFood.is_liquid,
       selectedFood.friendly_measures,
       selectedFood.serving_unit
     )
 
     return (
-      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 pb-20 sm:pb-4 animate-fadeIn">
-        <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl flex flex-col max-h-[82vh] overflow-hidden animate-slideUp">
-          {/* Top Bar */}
-          <div className="p-6 border-b border-slate-50 shrink-0 flex items-center justify-between">
-            <button onClick={() => setSelectedFood(null)} className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-2xl transition-all">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-            <div className="text-center flex-1 mx-4">
-              <h3 className="font-black text-slate-800 text-lg leading-tight truncate px-2">{selectedFood.food_name}</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{selectedFood.brand_name || 'Genérico'}</p>
+      <div className="fixed inset-0 z-[100] flex items-end justify-center">
+        <div
+          className="absolute inset-0 animate-fadeIn"
+          style={overlayStyles}
+          onClick={() => {
+            setIsClosing(true);
+            setDragOffset(window.innerHeight);
+            setTimeout(onClose, 300);
+          }}
+        />
+        <div
+          className={`bg-[#FFF156] rounded-t-[3rem] border-t-4 border-black w-full max-w-md shadow-2xl flex flex-col h-[95vh] overflow-hidden relative ${isClosing ? '' : 'animate-slideUp'}`}
+          style={dragStyles}
+        >
+          <div
+            className="shrink-0 touch-none cursor-grab active:cursor-grabbing"
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
+            <DragHandle />
+            <div className="p-6 pt-2 flex items-center gap-4">
+              <button onClick={() => setSelectedFood(null)} className="w-12 h-12 bg-white border-2 border-black flex items-center justify-center rounded-2xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-black text-slate-800 text-lg leading-tight truncate">
+                  {selectedFood.food_name}
+                </h3>
+                <p className="text-[10px] font-bold text-slate-800/40 uppercase tracking-widest mt-0.5">
+                  {selectedFood.brand_name || 'Genérico'}
+                </p>
+              </div>
             </div>
-            
-            <button 
-              onClick={() => onEditFood(selectedFood)} 
-              className="p-2.5 bg-slate-50 text-slate-400 hover:text-[#7B61FF] rounded-2xl transition-all"
-              title="Modificar características"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
-            </button>
+            <div className="h-0.5 bg-black/5 mx-6" />
           </div>
 
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {/* Meal Type */}
             <div className="grid grid-cols-4 gap-2">
               {MEAL_TYPES.map(t => (
                 <button
                   key={t.id}
                   onClick={() => setSelectedMealType(t.id)}
-                  className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl transition-all border-2 ${selectedMealType === t.id
-                      ? 'bg-[#7B61FF]/5 border-[#7B61FF] text-[#7B61FF]'
-                      : 'bg-slate-50 border-transparent text-slate-400'
+                  className={`flex flex-col items-center gap-1.5 py-4 rounded-[20px] transition-all border-2 border-black ${selectedMealType === t.id
+                    ? 'bg-[#7B61FF] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]'
+                    : 'bg-white text-slate-400'
                     }`}
                 >
-                  <span className="text-lg">{t.icon}</span>
-                  <span className="text-[10px] font-black uppercase">{t.label}</span>
+                  <span className="text-xl group-active:scale-110 transition-transform">{t.icon}</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest">{t.label}</span>
                 </button>
               ))}
             </div>
 
-            {/* Amount Slider/Input */}
-            <div className="bg-slate-50 rounded-3xl p-6 relative overflow-hidden">
-              
-              {/* friendly measures carousel */}
-              <div className="flex bg-slate-200/50 p-1 rounded-2xl mb-6 overflow-x-auto no-scrollbar scroll-smooth">
-                <div className="flex gap-1 min-w-full">
+            <div className="space-y-3">
+              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Selecciona Medida</h4>
+              <div className="flex bg-slate-100 p-1 rounded-[24px] border-2 border-black h-14">
+                <div className="flex w-full">
                   {selectedFood.serving_size_g && (
-                    <button 
+                    <button
                       onClick={() => { setUnit('serving'); setAmount(1); }}
-                      className={`shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest font-black rounded-xl transition-all ${
-                        unit === 'serving' ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
-                      }`}
+                      className={`flex-1 text-[10px] uppercase tracking-widest font-black rounded-[20px] transition-all ${unit === 'serving' ? 'bg-[#7B61FF] text-white border-2 border-black' : 'text-slate-400'
+                        }`}
                     >
                       {selectedFood.serving_unit || 'Porción'}
                     </button>
                   )}
                   {friendlyMeasures.map(m => (
-                    <button 
+                    <button
                       key={m.name}
                       onClick={() => { setUnit(m.name); setAmount(1); }}
-                      className={`shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest font-black rounded-xl transition-all ${
-                        unit === m.name ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
-                      }`}
+                      className={`flex-1 text-[10px] uppercase tracking-widest font-black rounded-[20px] transition-all ${unit === m.name ? 'bg-[#7B61FF] text-white border-2 border-black' : 'text-slate-400'
+                        }`}
                     >
                       {m.name}
                     </button>
                   ))}
-                  <button 
-                    onClick={() => { 
-                      setUnit('base'); 
-                      setAmount(selectedFood.serving_size_g || 100); 
+                  <button
+                    onClick={() => {
+                      setUnit('base');
+                      setAmount(selectedFood.serving_size_g || 100);
                     }}
-                    className={`shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest font-black rounded-xl transition-all ${
-                      unit === 'base' ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
-                    }`}
+                    className={`flex-1 text-[10px] uppercase tracking-widest font-black rounded-[20px] transition-all ${unit === 'base' ? 'bg-[#7B61FF] text-white border-2 border-black' : 'text-slate-400'
+                      }`}
                   >
-                    Exacto ({selectedFood.base_unit || 'g'})
+                    Exacto
                   </button>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between gap-4 mb-4">
-                <div className="flex flex-col flex-1 min-w-0">
-                  <span className="text-[14px] font-black text-slate-800 leading-tight">¿Cuánto has tomado?</span>
-                  <span className="text-[9px] font-bold text-slate-400 uppercase mt-1">
-                    (Base: {selectedFood.serving_size_g ? `${selectedFood.serving_size_g}${selectedFood.base_unit || 'g'}` : `100${selectedFood.base_unit || 'g'}`})
-                  </span>
-                </div>
-                <div className={`flex items-center gap-2 bg-white transition-all shadow-sm border border-slate-200 focus-within:border-[#7B61FF] shrink-0 ${unit === 'base' ? 'px-4 py-3 rounded-2xl' : 'px-2 py-1.5 rounded-2xl'}`}>
-                  {unit !== 'base' && (
-                    <button
-                      onClick={() => setAmount((prev: number) => Math.max(0, prev - 1))}
-                      className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
-                    </button>
-                  )}
-                  <div className="flex items-baseline gap-1">
-                    <input
-                      type="number"
-                      step="any"
-                      className={`bg-transparent text-right font-black text-[#7B61FF] outline-none ${unit === 'base' ? 'text-2xl w-20' : 'text-xl w-14 text-center'}`}
-                      value={amount}
-                      onChange={e => setAmount(Number(e.target.value) || 0)}
-                    />
-                    {unit === 'base' && (
-                      <span className="text-xs font-bold text-slate-300 uppercase tracking-widest min-w-[20px]">
-                        {selectedFood.base_unit || 'g'}
-                      </span>
-                    )}
-                  </div>
-                  {unit !== 'base' && (
-                    <button
-                      onClick={() => setAmount((prev: number) => prev + 1)}
-                      className="w-11 h-11 flex items-center justify-center bg-slate-50 text-slate-400 hover:text-[#7B61FF] hover:bg-[#7B61FF]/5 rounded-xl transition-all active:scale-90"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {unit !== 'base' && (
-                 <div className="text-center mb-4">
-                    <span className="text-[10px] font-bold text-slate-400">
-                      Consumiendo: <strong className="text-slate-600">{weight.toFixed(0)}{selectedFood.base_unit || 'g'}</strong> ({amount} {unit === 'serving' ? (selectedFood.serving_unit || 'porción') : unit}{amount !== 1 ? 's' : ''})
-                    </span>
-                 </div>
-              )}
-
-              <div className="flex items-center justify-between bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-100">
-                <span className="text-sm font-bold text-slate-500">Energía Total</span>
-                <span className="text-2xl font-black text-[#5BC897]">{currentCal} kcal</span>
-              </div>
             </div>
 
-            {/* Detailed Macros */}
             <div className="space-y-4">
+              <div className="bg-white rounded-[32px] p-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-4 opacity-10">
+                  <span className="text-6xl font-black italic">#{amount}</span>
+                </div>
+
+                <div className="flex items-center justify-between gap-6 relative z-10">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cantidad</span>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={amount}
+                      onChange={(e) => setAmount(Number(e.target.value))}
+                      className="text-5xl font-black text-black bg-transparent outline-none w-24"
+                    />
+                    <span className="text-xs font-bold text-[#7B61FF] uppercase tracking-widest mt-1">
+                      {unit === 'serving' ? (selectedFood.serving_unit || 'porciones') : (unit === 'base' ? (selectedFood.base_unit || 'g') : unit)}
+                    </span>
+                    <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest mt-0.5">
+                      (BASE: {selectedFood.serving_size_g ? `${selectedFood.serving_size_g}${selectedFood.base_unit || 'g'}` : `100${selectedFood.base_unit || 'g'}`})
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-3 shrink-0 h-14">
+                    {unit !== 'base' && (
+                      <button
+                        onClick={() => setAmount((prev: number) => Math.max(0.5, prev - 0.5))}
+                        className="w-11 h-11 flex items-center justify-center bg-white text-slate-400 rounded-xl transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M18 12H6" /></svg>
+                      </button>
+                    )}
+                    {unit !== 'base' && (
+                      <button
+                        onClick={() => setAmount((prev: number) => prev + 1)}
+                        className="w-11 h-11 flex items-center justify-center bg-white text-[#7B61FF] rounded-xl transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v12m6-6H6" /></svg>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-[24px] border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center gap-1">
+                <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Energía Total</span>
+                <span className="text-4xl font-black text-black tracking-tighter">{currentCal} <span className="text-2xl">kcal</span></span>
+              </div>
+
               <div className="grid grid-cols-3 gap-3">
-                <div className="bg-blue-50/50 rounded-2xl p-3 border border-blue-100/50 text-center">
-                  <p className="text-[9px] font-bold text-blue-400 uppercase">Proteínas</p>
-                  <p className="text-base font-black text-blue-600">{currentP}g</p>
+                <div className="bg-white rounded-[24px] p-4 border-2 border-black flex flex-col items-center justify-center">
+                  <p className="text-[9px] font-black text-slate-800/40 uppercase tracking-widest leading-none mb-1">Proteínas</p>
+                  <p className="text-xl font-black text-slate-800 leading-none">{currentP}<span className="text-xs ml-0.5">g</span></p>
                 </div>
-                <div className="bg-green-50/50 rounded-2xl p-3 border border-green-100/50 text-center">
-                  <p className="text-[9px] font-bold text-green-400 uppercase">Carbohid.</p>
-                  <p className="text-base font-black text-green-600">{currentC}g</p>
+                <div className="bg-white rounded-[24px] p-4 border-2 border-black flex flex-col items-center justify-center">
+                  <p className="text-[9px] font-black text-slate-800/40 uppercase tracking-widest leading-none mb-1">Carbohid.</p>
+                  <p className="text-xl font-black text-slate-800 leading-none">{currentC}<span className="text-xs ml-0.5">g</span></p>
                 </div>
-                <div className="bg-orange-50/50 rounded-2xl p-3 border border-orange-100/50 text-center">
-                  <p className="text-[9px] font-bold text-orange-400 uppercase">Grasas</p>
-                  <p className="text-base font-black text-orange-600">{currentF}g</p>
+                <div className="bg-white rounded-[24px] p-4 border-2 border-black flex flex-col items-center justify-center">
+                  <p className="text-[9px] font-black text-slate-800/40 uppercase tracking-widest leading-none mb-1">Grasas</p>
+                  <p className="text-xl font-black text-slate-800 leading-none">{currentF}<span className="text-xs ml-0.5">g</span></p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-pink-50/50 rounded-2xl p-3 border border-pink-100/50 flex justify-between items-center px-4">
-                  <span className="text-[10px] font-bold text-pink-400 uppercase">Azúcares</span>
-                  <span className="text-sm font-black text-pink-600">{currentSugar}g</span>
+                <div className="bg-[#FCE7F3] rounded-[24px] p-4 border-2 border-black flex justify-between items-center px-5">
+                  <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Azúcares</span>
+                  <span className="text-lg font-black text-pink-600 leading-none">{currentSugar}g</span>
                 </div>
-                <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100 flex justify-between items-center px-4">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">Sal</span>
-                  <span className="text-sm font-black text-slate-600">{currentSalt}g</span>
+                <div className="bg-[#DBEAFE] rounded-[24px] p-4 border-2 border-black flex justify-between items-center px-5">
+                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Sal</span>
+                  <span className="text-lg font-black text-blue-700 leading-none">{currentSalt}g</span>
+                  <div className="pt-4 pb-2">
+                    <button
+                      onClick={handleSave}
+                      className="w-full bg-[#7B61FF] text-white border-2 border-black rounded-[32px] py-5 text-xl font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all active:shadow-none active:translate-x-1 active:translate-y-1"
+                    >
+                      Confirmar Ingesta 🚀
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <div className="p-6 shrink-0">
-            <button
-              onClick={handleSave}
-              className="w-full bg-[#7B61FF] hover:bg-[#684DEC] text-white rounded-3xl py-5 text-lg font-black shadow-xl shadow-purple-200 transition-all active:scale-[0.98]"
-            >
-              Confirmar Ingesta 🚀
-            </button>
           </div>
         </div>
       </div>
     )
   }
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 pt-12 sm:pt-4 pb-20 sm:pb-4 animate-fadeIn">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl flex flex-col max-h-[82vh] animate-slideUp">
-
-        <div className="p-6 pb-0 shrink-0 flex items-center justify-between">
-          <h2 className="text-xl font-black text-slate-800 tracking-tight">Buscar Alimento</h2>
-          <button onClick={onClose} className="p-2 text-slate-300 hover:text-slate-500 transition-colors">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-        </div>
-
-        <div className="p-6 shrink-0 space-y-3">
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-300 group-focus-within:text-[#7B61FF] transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-            <input
-              autoFocus
-              type="text"
-              placeholder="¿Qué buscas? (Ej: Yogur...)"
-              className="w-full bg-slate-50 text-slate-800 pl-12 pr-4 py-4 rounded-2xl font-bold border-2 border-transparent focus:border-[#7B61FF]/30 focus:bg-white transition-all outline-none placeholder:text-slate-300"
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="relative group">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-300 group-focus-within:text-[#7B61FF] transition-colors">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 7h.01M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
-              </svg>
-            </div>
-            <select
-              value={brandQuery}
-              onChange={e => setBrandQuery(e.target.value)}
-              className="w-full bg-slate-50 text-slate-800 pl-12 pr-10 py-4 rounded-2xl font-bold text-xs border-2 border-transparent focus:border-[#7B61FF]/30 focus:bg-white transition-all outline-none appearance-none cursor-pointer"
-            >
-              <option value="">Todas las marcas</option>
-              {brands.map((brand: string) => (
-                <option key={brand} value={brand}>{brand}</option>
-              ))}
-            </select>
-            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-300">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
-            </div>
-          </div>
-
-          <div className="flex overflow-x-auto gap-2 no-scrollbar py-2 -mx-1 px-1">
-            <button
-              onClick={() => setSelectedCategory(null)}
-              className={`shrink-0 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                !selectedCategory ? 'bg-[#7B61FF] text-white shadow-lg shadow-purple-100 scale-105' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-              }`}
-            >
-              Todos
-            </button>
-            {CATEGORIES.map(cat => (
-              <button
-                key={cat.id}
-                onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
-                className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                  selectedCategory === cat.id ? 'bg-[#7B61FF] text-white shadow-lg shadow-purple-100 scale-105' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-                }`}
+            return (
+            <div className="fixed inset-0 z-[100] flex items-end justify-center">
+              <div
+                className="absolute inset-0 animate-fadeIn"
+                style={overlayStyles}
+                onClick={() => {
+                  setIsClosing(true);
+                  setDragOffset(window.innerHeight);
+                  setTimeout(onClose, 300);
+                }}
+              />
+              <div
+                className={`bg-[#FFF156] rounded-t-[3rem] border-t-4 border-black w-full max-w-md shadow-2xl flex flex-col h-[95vh] overflow-hidden relative ${isClosing ? '' : 'animate-slideUp'}`}
+                style={dragStyles}
               >
-                <span>{cat.icon}</span>
-                <span>{cat.id}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+                <div
+                  className="shrink-0 touch-none cursor-grab active:cursor-grabbing"
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                >
+                  <DragHandle />
 
-        <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-2">
-          {loadingSearch ? (
-            <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-50">
-              <div className="w-8 h-8 border-3 border-[#7B61FF] border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Consultando base de datos...</p>
-            </div>
-          ) : results.length > 0 ? (
-            results.map((food: any) => (
-              <button
-                key={food.food_id}
-                onClick={() => setSelectedFood(food)}
-                className="w-full text-left p-4 hover:bg-slate-50 rounded-2xl transition-all border border-transparent hover:border-slate-100 group flex items-start justify-between"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-bold text-slate-800 text-sm capitalize truncate">{food.food_name}</span>
-                    {food.is_global && (
-                      <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-600 text-[8px] font-black rounded-md shrink-0 uppercase tracking-tighter">
-                        Verificado ✅
-                      </span>
+                  <div className="p-6 pt-2 pb-0 flex items-center justify-between">
+                    <h2 className="text-xl font-black text-slate-800 tracking-tight">Buscar Alimento</h2>
+                    <button onClick={onClose} className="w-12 h-12 bg-white border-2 border-black flex items-center justify-center rounded-2xl shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all">
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 shrink-0 space-y-3">
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#7B61FF]">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                      </svg>
+                    </div>
+                    <input
+                      autoFocus
+                      type="text"
+                      placeholder="¿Qué buscas? (Ej: Yogur...)"
+                      className="w-full bg-white text-[#475569] pl-12 pr-4 py-4 rounded-2xl font-bold border-2 border-black focus:border-[#7B61FF] transition-all outline-none placeholder:text-slate-300"
+                      value={query}
+                      onChange={e => setQuery(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#7B61FF]">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M7 7h.01M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z" />
+                      </svg>
+                    </div>
+                    <select
+                      value={brandQuery}
+                      onChange={e => setBrandQuery(e.target.value)}
+                      className="w-full bg-white text-[#475569] pl-12 pr-10 py-4 rounded-2xl font-bold text-xs border-2 border-black focus:border-[#7B61FF] transition-all outline-none appearance-none cursor-pointer"
+                    >
+                      <option value="">Todas las marcas</option>
+                      {brands.map((brand: string) => (
+                        <option key={brand} value={brand}>{brand}</option>
+                      ))}
+                    </select>
+                    {brandQuery ? (
+                      <button
+                        onClick={() => setBrandQuery('')}
+                        className="absolute inset-y-0 right-0 pr-4 flex items-center text-black hover:text-[#7B61FF] transition-colors"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    ) : (
+                      <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-300">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+                      </div>
                     )}
                   </div>
-                  <p className="text-[10px] text-slate-400 font-bold truncate uppercase tracking-widest">
-                    {food.brand_name || 'Genérico'} · {food.serving_size_g 
-                      ? Math.round(food.params_per_100g.calories * (food.serving_size_g / 100))
-                      : food.params_per_100g.calories} kcal / {food.serving_size_g 
-                      ? (food.serving_unit ? `1 ${food.serving_unit}` : `${food.serving_size_g}${food.base_unit || 'g'}`) 
-                      : '100g'}
-                  </p>
-                </div>
-                <div className="ml-4 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-[#7B61FF] group-hover:text-white transition-all">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                </div>
-              </button>
-            ))
-          ) : query.length > 2 ? (
-            <div className="text-center py-12 space-y-6">
-              <div className="opacity-50 space-y-2">
-                <span className="text-3xl">🏜️</span>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin coincidencias en la comunidad</p>
-              </div>
 
-              <button
-                onClick={() => onEditFood({})}
-                className="mx-auto flex items-center gap-2 bg-[#7B61FF]/10 text-[#7B61FF] px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#7B61FF] hover:text-white transition-all border-2 border-[#7B61FF]/20"
-              >
-                <span>Añadir alimento nuevo</span>
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-              </button>
-            </div>
-          ) : query.length === 0 && recentMeals.length > 0 ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 px-1">
-                <span className="text-xl">🕒</span>
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Consumidos recientemente</h4>
-              </div>
-              <div className="space-y-2">
-                {recentMeals.map((meal: any) => (
-                  <button
-                    key={meal.id}
-                    onClick={() => setSelectedFood({
-                      food_id: meal.id,
-                      food_name: meal.name,
-                      brand_name: 'Reciente',
-                      params_per_100g: {
-                        calories: meal.calories,
-                        macros: {
-                          p: meal.protein,
-                          c: meal.carbs,
-                          f: meal.fats,
-                          sugar: meal.sugar,
-                          salt: meal.salt
-                        }
-                      },
-                      image_url: meal.image_url,
-                      base_unit: 'g',
-                      serving_size_g: 100 // Treat the last entry as the base 100g unit for scaling
-                    })}
-                    className="w-full text-left p-4 bg-slate-50/50 hover:bg-slate-100/80 rounded-2xl transition-all border border-transparent hover:border-slate-200 group flex items-start justify-between"
-                  >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-slate-800 text-sm truncate">{meal.name}</span>
+                  <div className="flex overflow-x-auto gap-2 no-scrollbar py-2 -mx-1 px-1">
+                    <button
+                      onClick={() => setSelectedCategory(null)}
+                      className={`shrink-0 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 border-black ${!selectedCategory ? 'bg-[#7B61FF] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black'
+                        }`}
+                    >
+                      Todos
+                    </button>
+                    {CATEGORIES.map(cat => (
+                      <button
+                        key={cat.id}
+                        onClick={() => setSelectedCategory(selectedCategory === cat.id ? null : cat.id)}
+                        className={`shrink-0 flex items-center gap-2 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all border-2 border-black ${selectedCategory === cat.id ? 'bg-[#7B61FF] text-white shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-black'
+                          }`}
+                      >
+                        <span>{cat.icon}</span>
+                        <span>{cat.id}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-2">
+                  {loadingSearch ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3 opacity-50">
+                      <div className="w-8 h-8 border-3 border-[#7B61FF] border-t-transparent rounded-full animate-spin" />
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Consultando base de datos...</p>
+                    </div>
+                  ) : results.length > 0 ? (
+                    results.map((food: any) => (
+                      <button
+                        key={food.food_id}
+                        onClick={() => setSelectedFood(food)}
+                        className="w-full text-left p-4 bg-white rounded-2xl transition-all border-2 border-black group flex items-center justify-between"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="font-bold text-slate-800 text-sm capitalize truncate">{food.food_name}</span>
+                            {food.is_global && (
+                              <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-600 text-[8px] font-black rounded-md shrink-0 uppercase tracking-tighter">
+                                Verificado ✅
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-[#475569] font-bold truncate uppercase tracking-widest">
+                            {food.brand_name || 'Genérico'} · {food.serving_size_g
+                              ? Math.round(food.params_per_100g.calories * (food.serving_size_g / 100))
+                              : food.params_per_100g.calories} kcal / {food.serving_size_g
+                                ? (food.serving_unit ? `1 ${food.serving_unit}` : `${food.serving_size_g}${food.base_unit || 'g'}`)
+                                : '100g'}
+                          </p>
+                        </div>
+                        <div className="ml-4 w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-[#7B61FF] group-hover:bg-[#7B61FF] group-hover:text-white transition-all border-2 border-[#7B61FF]/20 group-hover:border-[#7B61FF]">
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
+                        </div>
+                      </button>
+                    ))
+                  ) : query.length > 2 ? (
+                    <div className="text-center py-12 space-y-6">
+                      <div className="opacity-50 space-y-2">
+                        <span className="text-3xl">🏜️</span>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Sin coincidencias en la comunidad</p>
                       </div>
-                      <p className="text-[10px] text-slate-400 font-bold truncate uppercase tracking-widest">
-                        {meal.calories} kcal · {meal.protein}P / {meal.carbs}C / {meal.fats}F
-                      </p>
-                    </div>
-                    <div className="ml-4 w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#7B61FF] group-hover:scale-110 shadow-sm transition-all">
-                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="bg-slate-50/50 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-4 border border-dashed border-slate-100">
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-slate-400">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-              </div>
-              <div>
-                <h4 className="font-black text-slate-800 text-sm">Biblioteca Global de Alimentos</h4>
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1 px-4 leading-relaxed">
-                  Busca productos de supermercado verificados por la comunidad.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
 
-        <div className="p-6 bg-slate-50/50 mt-auto border-t border-slate-100 flex items-center justify-center gap-2 text-[10px] text-[#7B61FF] font-black uppercase tracking-widest">
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
-          Sincronizado con la comunidad
-        </div>
-      </div>
-    </div>
-  )
+                      <button
+                        onClick={() => onEditFood({})}
+                        className="mx-auto flex items-center gap-2 bg-[#7B61FF]/10 text-[#7B61FF] px-6 py-3 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-[#7B61FF] hover:text-white transition-all border-2 border-[#7B61FF]/20"
+                      >
+                        <span>Añadir alimento nuevo</span>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                      </button>
+                    </div>
+                  ) : query.length === 0 && recentMeals.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2 px-1">
+                        <span className="text-xl">🕒</span>
+                        <h4 className="text-[10px] font-black text-black uppercase tracking-[0.2em]">Consumidos recientemente</h4>
+                      </div>
+                      <div className="space-y-2">
+                        {recentMeals.map((meal: any) => (
+                          <button
+                            key={meal.id}
+                            onClick={() => setSelectedFood({
+                              food_id: meal.id,
+                              food_name: meal.name,
+                              brand_name: 'Reciente',
+                              params_per_100g: {
+                                calories: meal.calories,
+                                macros: {
+                                  p: meal.protein,
+                                  c: meal.carbs,
+                                  f: meal.fats,
+                                  sugar: meal.sugar,
+                                  salt: meal.salt
+                                }
+                              },
+                              image_url: meal.image_url,
+                              base_unit: 'g',
+                              serving_size_g: 100
+                            })}
+                            className="w-full text-left p-4 bg-white rounded-2xl transition-all border-2 border-black group flex items-center justify-between"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-bold text-slate-800 text-sm truncate">{meal.name}</span>
+                              </div>
+                              <p className="text-[10px] text-[#475569] font-bold truncate uppercase tracking-widest">
+                                {meal.calories} kcal · {meal.protein}P / {meal.carbs}C / {meal.fats}F
+                              </p>
+                            </div>
+                            <div className="ml-4 w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#7B61FF] group-hover:scale-110 shadow-sm transition-all border-2 border-[#7B61FF]">
+                              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50/50 rounded-3xl p-8 flex flex-col items-center justify-center text-center gap-4 border border-dashed border-slate-100">
+                      <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm text-slate-400">
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                      </div>
+                      <div>
+                        <h4 className="font-black text-slate-800 text-sm">Biblioteca Global de Alimentos</h4>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mt-1 px-4 leading-relaxed">
+                          Busca productos de supermercado verificados por la comunidad.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            )
 }
+

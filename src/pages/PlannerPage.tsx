@@ -7,7 +7,7 @@ const TODAY = new Date().toISOString().slice(0, 10)
 const MEAL_TYPE_LABELS: Record<MealType, { label: string; emoji: string }> = {
   breakfast: { label: 'Desayuno', emoji: '🌅' },
   lunch:     { label: 'Almuerzo', emoji: '☀️' },
-  snack:     { label: 'Merienda', emoji: '🍎' },
+  snack:     { label: 'Snacks', emoji: '🍎' },
   dinner:    { label: 'Cena',     emoji: '🌙' },
 }
 

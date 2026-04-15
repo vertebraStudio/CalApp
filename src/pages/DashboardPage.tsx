@@ -13,7 +13,7 @@ const TODAY_ISO = new Date().toISOString().slice(0, 10)
 const MEAL_TYPES: { id: MealType; label: string; icon: string }[] = [
   { id: 'breakfast', label: 'Desayuno', icon: '🍳' },
   { id: 'lunch', label: 'Comida', icon: '🥗' },
-  { id: 'snack', label: 'Merienda', icon: '🍎' },
+  { id: 'snack', label: 'Snacks', icon: '🍎' },
   { id: 'dinner', label: 'Cena', icon: '🍲' },
 ]
 
@@ -92,15 +92,17 @@ export default function DashboardPage() {
 
 
   return (
-    <div className="min-h-screen bg-[#F8F9FE] -mx-4 -mt-6 px-4 pt-4 pb-32 text-slate-800 font-sans tracking-tight">
+    <div className="pb-32 text-slate-800 font-sans tracking-tight">
       <DaySelector selectedDate={selectedDate} onDateChange={setSelectedDate} />
 
       <div className="mt-4 space-y-6">
         {/* Compact Single-Card Nutrition Summary */}
-        <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
+        <div className={`bg-white rounded-[32px] border-2 border-black overflow-hidden transition-all duration-300 ${
+          collapsedSections.includes('nutrition') ? 'shadow-none' : 'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+        }`}>
           <button 
             onClick={() => toggleSection('nutrition')}
-            className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors text-left"
+            className="w-full flex items-center justify-between p-6 transition-colors text-left"
           >
             <div className="flex items-center justify-between flex-1 pr-4">
               <div>
@@ -125,7 +127,11 @@ export default function DashboardPage() {
               </div>
             </div>
             
-            <div className={`p-2 bg-slate-50 rounded-xl text-slate-400 transition-transform duration-300 ${collapsedSections.includes('nutrition') ? '-rotate-180' : ''}`}>
+            <div className={`p-2 rounded-xl border-[1.5px] border-black transition-all duration-300 ${
+              collapsedSections.includes('nutrition') 
+                ? 'bg-[#7B61FF] text-white -rotate-180' 
+                : 'bg-[#FFF156] text-black'
+            }`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
             </div>
           </button>
@@ -278,10 +284,12 @@ export default function DashboardPage() {
     </div>
 
         {/* Water Tracker Module */}
-        <div className="bg-white rounded-[32px] shadow-sm border border-slate-100 overflow-hidden">
+        <div className={`bg-white rounded-[32px] border-2 border-black overflow-hidden transition-all duration-300 ${
+          collapsedSections.includes('water') ? 'shadow-none' : 'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+        }`}>
           <button 
             onClick={() => toggleSection('water')}
-            className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors text-left"
+            className="w-full flex items-center justify-between p-6 transition-colors text-left"
           >
             <div className="flex items-center gap-3">
               <div className="bg-sky-50 p-2 rounded-2xl">
@@ -294,7 +302,11 @@ export default function DashboardPage() {
                 </p>
               </div>
             </div>
-            <div className={`p-2 bg-slate-50 rounded-xl text-slate-400 transition-transform duration-300 ${collapsedSections.includes('water') ? '-rotate-180' : ''}`}>
+            <div className={`p-2 rounded-xl border-[1.5px] border-black transition-all duration-300 ${
+              collapsedSections.includes('water') 
+                ? 'bg-[#7B61FF] text-white -rotate-180' 
+                : 'bg-[#FFF156] text-black'
+            }`}>
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
             </div>
           </button>
@@ -367,37 +379,51 @@ export default function DashboardPage() {
           />
         )}
 
-        <div className="space-y-6 mt-8">
+        <div className="space-y-4 mt-8">
            {MEAL_TYPES.map((type) => {
              const groupMeals = mealsByType[type.id]
              const isCollapsed = collapsedSections.includes(type.id)
              
              return (
-               <section key={type.id} className="space-y-3">
+               <section key={type.id} className={`bg-white rounded-[32px] border-2 border-black overflow-hidden transition-all duration-300 ${
+                 isCollapsed ? 'shadow-none' : 'shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]'
+               }`}>
                  <button 
                   onClick={() => toggleSection(type.id)}
-                  className="w-full flex items-center gap-2 px-1 hover:opacity-70 transition-opacity"
+                  className="w-full flex items-center justify-between p-5 transition-colors text-left"
                  >
-                   <span className="text-lg">{type.icon}</span>
-                   <h3 className="text-sm font-black text-slate-800 tracking-tight flex-1 flex items-center gap-2">
-                     {type.label}
-                     <svg className={`w-3 h-3 text-slate-300 transition-transform duration-300 ${isCollapsed ? '-rotate-90' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={4} d="M19 9l-7 7-7-7" /></svg>
-                   </h3>
-                   {groupMeals.length > 0 && (
-                     <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                       {groupMeals.reduce((s, m) => s + m.calories, 0)} kcal
-                     </span>
-                   )}
+                   <div className="flex items-center gap-3">
+                     <div className="bg-slate-50 p-2 rounded-2xl">
+                       <span className="text-xl">{type.icon}</span>
+                     </div>
+                     <h3 className="text-base font-black text-slate-800 tracking-tight">
+                       {type.label}
+                     </h3>
+                   </div>
+                   <div className="flex items-center gap-3">
+                     {groupMeals.length > 0 && (
+                       <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                         {groupMeals.reduce((s, m) => s + m.calories, 0)} kcal
+                       </span>
+                     )}
+                     <div className={`p-2 rounded-xl border-[1.5px] border-black transition-all duration-300 ${
+                       isCollapsed 
+                         ? 'bg-[#7B61FF] text-white -rotate-180' 
+                         : 'bg-[#FFF156] text-black'
+                     }`}>
+                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
+                     </div>
+                   </div>
                  </button>
-                 
+
                  {!isCollapsed && (
-                   <div className="space-y-2 animate-fadeIn">
+                   <div className="px-5 pb-5 pt-0 space-y-2 animate-fadeIn border-t border-slate-50">
                      {groupMeals.length > 0 ? (
                        groupMeals.map(meal => (
                          <MealCard key={meal.id} meal={meal} onDelete={() => deleteMeal.mutate(meal.id)} onClick={() => setEditingMeal(meal)} />
                        ))
                      ) : (
-                       <div className="h-14 border-2 border-dashed border-slate-100 rounded-2xl flex items-center justify-center text-[11px] text-slate-300 font-bold bg-white/50">No hay registros</div>
+                       <div className="h-14 border-2 border-dashed border-slate-300 rounded-2xl flex items-center justify-center text-[11px] text-slate-500 font-bold mt-2">No hay registros</div>
                      )}
                    </div>
                  )}

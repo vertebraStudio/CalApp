@@ -10,12 +10,11 @@
   html {
     font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
-    background-color: #F8F9FE;
+    background-color: #8060FF;
   }
 
   body {
-    @apply bg-[#F8F9FE] text-slate-800 min-h-screen;
-    overscroll-behavior-y: none; /* Evita el efecto de rebote oscuro en navegadores */
+    @apply bg-[#8060FF] text-slate-800 min-h-screen;
   }
 
   * {
@@ -65,7 +64,7 @@
 }
 
 @keyframes slideUp {
-  from { transform: translateY(20px); opacity: 0; }
+  from { transform: translateY(100%); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
@@ -80,6 +79,25 @@
 
 .animate-popIn {
   animation: popIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out forwards;
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+.animate-float {
+  animation: float 4s ease-in-out infinite;
 }
 
 /* Scrollbar personalizado si no es no-scrollbar */

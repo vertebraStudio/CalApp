@@ -5,7 +5,7 @@ import { getFriendlyMeasures, normalizeToWeight } from '@/utils/conversions'
 const MEAL_TYPES: { id: MealType; label: string; icon: string }[] = [
   { id: 'breakfast', label: 'Desayuno', icon: '🍳' },
   { id: 'lunch', label: 'Comida', icon: '🥗' },
-  { id: 'snack', label: 'Merienda', icon: '🍎' },
+  { id: 'snack', label: 'Snacks', icon: '🍎' },
   { id: 'dinner', label: 'Cena', icon: '🍲' },
 ]
 

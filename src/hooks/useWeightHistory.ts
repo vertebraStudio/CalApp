@@ -27,20 +27,29 @@ export function useAddWeightEntry() {
   return useMutation({
     mutationFn: async (weight: number) => {
       const today = new Date().toISOString().slice(0, 10)
-      
-      // Upsert: si ya hay un peso hoy, lo actualiza. Si no, lo crea.
-      const { data, error } = await supabase
+
+      // Check if there's already an entry for today
+      const { data: existing } = await supabase
         .from('weight_history')
-        .upsert({ 
-          user_id: user!.id, 
-          weight, 
-          recorded_at: today 
-        }, { onConflict: 'user_id, recorded_at' })
-        .select()
-        .single()
-      
-      if (error) throw error
-      return data as WeightHistoryEntry
+        .select('id')
+        .eq('user_id', user!.id)
+        .eq('recorded_at', today)
+        .maybeSingle()
+
+      if (existing) {
+        // Update existing entry — no .single() to avoid PGRST116 from RLS
+        const { error } = await supabase
+          .from('weight_history')
+          .update({ weight })
+          .eq('id', existing.id)
+        if (error) throw error
+      } else {
+        // Insert new entry
+        const { error } = await supabase
+          .from('weight_history')
+          .insert({ user_id: user!.id, weight, recorded_at: today })
+        if (error) throw error
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['weight-history'] })

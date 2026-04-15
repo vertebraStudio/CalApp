@@ -12,8 +12,8 @@ const navItemsStart = [
     to: '/',
     label: 'Hoy',
     icon: (active: boolean) => (
-      <svg className={`w-6 h-6 ${active ? 'text-[#7B61FF]' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? 2.5 : 2}
+      <svg className={`w-6 h-6 ${active ? 'text-[#FFF156]' : 'text-white/40'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
       </svg>
     ),
@@ -22,8 +22,8 @@ const navItemsStart = [
     to: '/nevera',
     label: 'Nevera',
     icon: (active: boolean) => (
-      <svg className={`w-6 h-6 ${active ? 'text-[#7B61FF]' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? 2.5 : 2}
+      <svg className={`w-6 h-6 ${active ? 'text-[#FFF156]' : 'text-white/40'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M7 3h10a2 2 0 012 2v14a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2z M5 10h14 M9 6v2 M9 13v3" />
       </svg>
     ),
@@ -35,8 +35,8 @@ const navItemsEnd = [
     to: '/profile',
     label: 'Perfil',
     icon: (active: boolean) => (
-      <svg className={`w-6 h-6 ${active ? 'text-[#7B61FF]' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={active ? 2.5 : 2}
+      <svg className={`w-6 h-6 ${active ? 'text-[#FFF156]' : 'text-white/40'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
           d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
       </svg>
     ),
@@ -65,7 +65,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-100 shadow-[0_-4px_24px_-4px_rgba(0,0,0,0.05)]">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-[#5A43B2] border-t-2 border-black/20 shadow-[0_-4px_24px_-4px_rgba(0,0,0,0.2)]">
         <div className="max-w-2xl mx-auto px-4 h-20 relative">
           
           {/* 4-Column Grid for Symmetric Alignment */}
@@ -77,7 +77,7 @@ export default function Navbar() {
                 {({ isActive }) => (
                   <>
                     {navItemsStart[0].icon(isActive)}
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#7B61FF]' : 'text-slate-300'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#FFF156]' : 'text-white/40'}`}>
                       {navItemsStart[0].label}
                     </span>
                   </>
@@ -91,7 +91,7 @@ export default function Navbar() {
                 {({ isActive }) => (
                   <>
                     {navItemsStart[1].icon(isActive)}
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#7B61FF]' : 'text-slate-300'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#FFF156]' : 'text-white/40'}`}>
                       {navItemsStart[1].label}
                     </span>
                   </>
@@ -106,11 +106,11 @@ export default function Navbar() {
                 className="flex flex-col items-center gap-1 transition-all active:scale-95 group"
               >
                 <div className="relative">
-                  <svg className={`w-6 h-6 ${showDirect ? 'text-[#7B61FF]' : 'text-slate-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={showDirect ? 2.5 : 2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  <svg className={`w-6 h-6 ${showDirect ? 'text-[#FFF156]' : 'text-white/40'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <span className={`text-[10px] font-black uppercase tracking-wider ${showDirect ? 'text-[#7B61FF]' : 'text-slate-300'}`}>
+                <span className={`text-[10px] font-black uppercase tracking-wider ${showDirect ? 'text-[#FFF156]' : 'text-white/40'}`}>
                   Contribuir
                 </span>
               </button>
@@ -122,7 +122,7 @@ export default function Navbar() {
                 {({ isActive }) => (
                   <>
                     {navItemsEnd[0].icon(isActive)}
-                    <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#7B61FF]' : 'text-slate-300'}`}>
+                    <span className={`text-[10px] font-black uppercase tracking-wider ${isActive ? 'text-[#FFF156]' : 'text-white/40'}`}>
                       {navItemsEnd[0].label}
                     </span>
                   </>
@@ -143,11 +143,11 @@ export default function Navbar() {
             <div className="absolute top-1/2 left-1/2 w-0 h-0 z-0">
               {/* Cámara */}
               <button
-                onClick={() => { setShowPlusMenu(false); setShowUpload(true) }}
+                onClick={() => { setShowPlusMenu(false); alert('Estará listo próximamente'); }}
                 className="absolute flex flex-col items-center group w-16 animate-popIn"
                 style={{ '--tx': '-70px', '--ty': '-70px' } as any}
               >
-                <div className="w-14 h-14 rounded-full bg-emerald-400 text-white flex items-center justify-center shadow-lg shadow-emerald-200 group-active:scale-95 transition-all">
+                <div className="w-14 h-14 rounded-full bg-[#FFF156] text-black flex items-center justify-center border-2 border-black group-active:scale-95 transition-all">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   </svg>
@@ -160,7 +160,7 @@ export default function Navbar() {
                 className="absolute flex flex-col items-center group w-16 animate-popIn"
                 style={{ '--tx': '0px', '--ty': '-100px', animationDelay: '80ms' } as any}
               >
-                <div className="w-14 h-14 rounded-full bg-amber-400 text-white flex items-center justify-center shadow-lg shadow-amber-200 group-active:scale-95 transition-all">
+                <div className="w-14 h-14 rounded-full bg-[#FFF156] text-black flex items-center justify-center border-2 border-black group-active:scale-95 transition-all">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
@@ -169,11 +169,11 @@ export default function Navbar() {
 
               {/* Voz/Texto */}
               <button
-                onClick={() => { setShowPlusMenu(false); setShowVoice(true) }}
+                onClick={() => { setShowPlusMenu(false); alert('Estará listo próximamente'); }}
                 className="absolute flex flex-col items-center group w-16 animate-popIn"
                 style={{ '--tx': '70px', '--ty': '-70px', animationDelay: '160ms' } as any}
               >
-                <div className="w-14 h-14 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-lg shadow-blue-200 group-active:scale-95 transition-all">
+                <div className="w-14 h-14 rounded-full bg-[#FFF156] text-black flex items-center justify-center border-2 border-black group-active:scale-95 transition-all">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>
@@ -184,7 +184,7 @@ export default function Navbar() {
           
           <button
             onClick={() => setShowPlusMenu(!showPlusMenu)}
-            className={`relative z-10 w-16 h-16 rounded-full bg-[#7B61FF] text-white flex items-center justify-center transition-all duration-300 active:scale-95 ${showPlusMenu ? 'rotate-45 bg-[#684DEC]' : ''}`}
+            className={`relative z-10 w-16 h-16 rounded-full border-2 border-black text-black flex items-center justify-center transition-all duration-300 active:scale-95 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] ${showPlusMenu ? 'rotate-45 bg-[#FFF156]' : 'bg-[#FFF156]'}`}
           >
             <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
