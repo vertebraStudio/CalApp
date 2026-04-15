@@ -353,7 +353,7 @@ export default function PreferencesQuizModal({ isOpen, onClose, onSave, initialD
   const slideIn = dir === 'forward' ? 'translate-x-8 opacity-0' : '-translate-x-8 opacity-0'
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-12 sm:pb-4">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm"
@@ -361,7 +361,7 @@ export default function PreferencesQuizModal({ isOpen, onClose, onSave, initialD
       />
 
       {/* Modal */}
-      <div className="relative w-full sm:max-w-md bg-[#FFF156] rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[100dvh] border-t-4 sm:border-2 border-black">
+      <div className="relative w-full sm:max-w-md bg-[#FFF156] rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] sm:max-h-[90vh] border-2 border-black">
         {/* Header */}
         <div className="px-6 pt-6 pb-4 shrink-0">
           {/* Mobile handle */}
