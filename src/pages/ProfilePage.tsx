@@ -12,13 +12,7 @@ const GENDERS: { id: Profile['gender']; label: string; icon: string }[] = [
   { id: 'Otro', label: 'Otro', icon: '👤' },
 ]
 
-const ACTIVITY_LEVELS: { id: Profile['activity_level']; label: string; desc: string; icon: string }[] = [
-  { id: 'Sedentario', label: 'Sedentario', desc: 'Poco o nada de ejercicio', icon: '🪑' },
-  { id: 'Ligero', label: 'Ligero', desc: 'Ejercicio 1-3 días/sem', icon: '🚶' },
-  { id: 'Moderado', label: 'Moderado', desc: 'Ejercicio 3-5 días/sem', icon: '🏃' },
-  { id: 'Muy Activo', label: 'Muy Activo', desc: 'Ejercicio 6-7 días/sem', icon: '🏋️' },
-  { id: 'Atleta', label: 'Atleta', desc: 'Entrenamiento profesional', icon: '🔥' },
-]
+
 
 export default function ProfilePage() {
   const { user } = useAuth()
@@ -40,7 +34,7 @@ export default function ProfilePage() {
   const [macroC, setMacroC] = useState(40)
   const [macroF, setMacroF] = useState(30)
   const [waterGoal, setWaterGoal] = useState(2.0)
-  const [weightChanged, setWeightChanged] = useState(false)
+
   const [isQuizOpen, setIsQuizOpen] = useState(false)
 
   // Datos formateados para la gráfica
@@ -121,43 +115,7 @@ export default function ProfilePage() {
     }
   }, [profile, isQuizOpen])
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    // Validar que los macros sumen 100%
-    if (macroP + macroC + macroF !== 100) {
-      alert("Los porcentajes de macros deben sumar exactamente 100%")
-      return
-    }
 
-    try {
-      const currentWeight = parseFloat(weight)
-
-      await update.mutateAsync({
-        username,
-        goal_calories: goalCalories,
-        weight: currentWeight || (undefined as any),
-        height: height ? parseFloat(height) : (undefined as any),
-        age: age ? parseInt(age) : undefined,
-        gender,
-        activity_level: activity,
-        goal_type: goalType,
-        goal_intensity: goalIntensity,
-        macro_p_pct: macroP,
-        macro_c_pct: macroC,
-        macro_f_pct: macroF,
-        water_goal_liters: waterGoal
-      })
-
-      // Si el peso ha sido modificado, registrarlo en el historial
-      if (currentWeight) {
-        await addWeightEntry.mutateAsync(currentWeight)
-      }
-
-      setWeightChanged(false)
-    } catch (err) {
-      console.error("Error saving profile:", err)
-    }
-  }
 
   const handleQuizSave = async (quizData: {
     gender: Profile['gender']
@@ -211,9 +169,9 @@ export default function ProfilePage() {
       await update.mutateAsync({
         username: finalUsername,
         goal_calories: newCalories,
-        weight: currentWeight || null,
-        height: quizData.height ? parseFloat(quizData.height) : null,
-        age: quizData.age ? parseInt(quizData.age) : null,
+        weight: currentWeight || undefined,
+        height: quizData.height ? parseFloat(quizData.height) : undefined,
+        age: quizData.age ? parseInt(quizData.age) : undefined,
         gender: quizData.gender,
         activity_level: quizData.activity_level,
         goal_type: quizData.goal_type,
@@ -242,10 +200,7 @@ export default function ProfilePage() {
   }
 
   // Sincronizar meta calórica al cambiar parámetros
-  const useCalculated = () => {
-    setGoalCalories(calculatedCalories)
-    setWeightChanged(false)
-  }
+
 
   const { signOut } = useAuth()
 
