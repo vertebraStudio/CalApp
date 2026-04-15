@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import type { Profile } from '@/types'
 
 export interface QuizData {
@@ -352,7 +353,7 @@ export default function PreferencesQuizModal({ isOpen, onClose, onSave, initialD
   const slideOut = dir === 'forward' ? '-translate-x-8 opacity-0' : 'translate-x-8 opacity-0'
   const slideIn = dir === 'forward' ? 'translate-x-8 opacity-0' : '-translate-x-8 opacity-0'
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-4 pb-12 sm:pb-4">
       {/* Backdrop */}
       <div
@@ -449,4 +450,6 @@ export default function PreferencesQuizModal({ isOpen, onClose, onSave, initialD
       </div>
     </div>
   )
+
+  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent
 }
