@@ -1,4 +1,3 @@
-import React from 'react'
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import LoginPage from '@/pages/LoginPage'

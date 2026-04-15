@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile'
 import { useWeightHistory, useAddWeightEntry } from '@/hooks/useWeightHistory'
 import { useAuth } from '@/context/AuthContext'
@@ -45,35 +45,6 @@ export default function ProfilePage() {
     }))
   }, [weightHistory])
 
-  // Calificación de calorías automáticas (Mifflin-St Jeor)
-  const calculatedCalories = useMemo(() => {
-    const w = parseFloat(weight)
-    const h = parseFloat(height)
-    const a = parseInt(age)
-    if (!w || !h || !a || !gender) return 2000
-
-    // BMR
-    let bmr = (10 * w) + (6.25 * h) - (5 * a)
-    if (gender === 'Masculino') bmr += 5
-    else if (gender === 'Femenino') bmr -= 161
-    else bmr -= 78
-
-    // TDEE (Activity multiplier)
-    const multipliers = { 'Sedentario': 1.2, 'Ligero': 1.375, 'Moderado': 1.55, 'Muy Activo': 1.725, 'Atleta': 1.9 }
-    const tdee = bmr * (multipliers[activity as keyof typeof multipliers] || 1.55)
-
-    // Goal Offset
-    const offsets: Record<string, Record<string, number>> = {
-      'Perder Grasa': { 'Estándar': -300, 'Moderado': -500, 'Agresivo': -750 },
-      'Mantener Peso': { 'Estándar': 0, 'Moderado': 0, 'Agresivo': 0 },
-      'Ganar Músculo': { 'Estándar': 200, 'Moderado': 400, 'Agresivo': 600 }
-    }
-    
-    const typeKey = goalType as string
-    const intensityKey = goalIntensity as string
-    const result = Math.round(tdee + (offsets[typeKey]?.[intensityKey] || 0))
-    return Math.max(1200, result)
-  }, [weight, height, age, gender, activity, goalType, goalIntensity])
 
   // Cálculo de IMC y Progreso
   const healthKPIs = useMemo(() => {

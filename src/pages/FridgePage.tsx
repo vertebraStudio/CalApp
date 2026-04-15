@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useFridge } from '@/hooks/useFridge'
 import type { FridgeItem } from '@/types'
 

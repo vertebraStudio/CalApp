@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { usePlanner, useRemoveFromPlanner } from '@/hooks/usePlanner'
 import type { MealType } from '@/types'
 
