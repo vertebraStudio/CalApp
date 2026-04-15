@@ -1,7 +1,7 @@
-import { useState, useMemo, useEffect } from 'react'
+import React, { useState, useMemo, useEffect } from 'react'
 import type { Profile } from '@/types'
 
-interface QuizData {
+export interface QuizData {
   gender: Profile['gender']
   age: string
   height: string

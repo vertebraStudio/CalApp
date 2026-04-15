@@ -4,7 +4,7 @@ import { useWeightHistory, useAddWeightEntry } from '@/hooks/useWeightHistory'
 import { useAuth } from '@/context/AuthContext'
 import type { Profile } from '@/types'
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
-import PreferencesQuizModal from '@/components/profile/PreferencesQuizModal'
+import PreferencesQuizModal, { QuizData } from '@/components/profile/PreferencesQuizModal'
 
 const GENDERS: { id: Profile['gender']; label: string; icon: string }[] = [
   { id: 'Masculino', label: 'Masculino', icon: '👨' },
@@ -117,16 +117,7 @@ export default function ProfilePage() {
 
 
 
-  const handleQuizSave = async (quizData: {
-    gender: Profile['gender']
-    age: string
-    height: string
-    weight: string
-    goal_type: Profile['goal_type']
-    goal_intensity: Profile['goal_intensity']
-    activity_level: Profile['activity_level']
-    water_goal_liters: number
-  }) => {
+  const handleQuizSave = async (quizData: QuizData) => {
     console.log('Iniciando guardado de quiz...', quizData)
     try {
       const currentWeight = parseFloat(quizData.weight)
@@ -210,7 +201,7 @@ export default function ProfilePage() {
         preventClose={!profile?.weight}
         isOpen={isQuizOpen}
         onClose={() => setIsQuizOpen(false)}
-        onSave={handleQuizSave as (data: any) => Promise<void>}
+        onSave={handleQuizSave}
         initialData={{
           gender,
           age,
