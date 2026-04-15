@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useProfile, useUpdateProfile } from '@/hooks/useProfile'
 import { useWeightHistory, useAddWeightEntry } from '@/hooks/useWeightHistory'
 import { useAuth } from '@/context/AuthContext'
@@ -69,7 +69,9 @@ export default function ProfilePage() {
       'Ganar Músculo': { 'Estándar': 200, 'Moderado': 400, 'Agresivo': 600 }
     }
     
-    const result = Math.round(tdee + (offsets[goalType as any]?.[goalIntensity as any] || 0))
+    const typeKey = goalType as string
+    const intensityKey = goalIntensity as string
+    const result = Math.round(tdee + (offsets[typeKey]?.[intensityKey] || 0))
     return Math.max(1200, result)
   }, [weight, height, age, gender, activity, goalType, goalIntensity])
 
@@ -160,8 +162,8 @@ export default function ProfilePage() {
       await update.mutateAsync({
         username: finalUsername,
         goal_calories: newCalories,
-        weight: currentWeight || undefined,
-        height: quizData.height ? parseFloat(quizData.height) : undefined,
+        weight: currentWeight || null,
+        height: quizData.height ? parseFloat(quizData.height) : null,
         age: quizData.age ? parseInt(quizData.age) : undefined,
         gender: quizData.gender,
         activity_level: quizData.activity_level,

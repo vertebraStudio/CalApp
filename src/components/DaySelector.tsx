@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import React, { useMemo } from 'react'
 
 interface DaySelectorProps {
   selectedDate: string // YYYY-MM-DD

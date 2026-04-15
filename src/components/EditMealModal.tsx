@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import type { Meal, MealType } from '@/types'
 import { getFriendlyMeasures, normalizeToWeight } from '@/utils/conversions'
 

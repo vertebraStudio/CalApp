@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import React, { useState, useMemo } from 'react'
 import { useMeals, useDeleteMeal } from '@/hooks/useMeals'
 import { useProfile } from '@/hooks/useProfile'
 import { useWater, useUpdateWater } from '@/hooks/useWater'

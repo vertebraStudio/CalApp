@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import ManualSearch from '../ManualSearch'
 import ImageUpload from '../ImageUpload'
@@ -145,7 +145,7 @@ export default function Navbar() {
               <button
                 onClick={() => { setShowPlusMenu(false); alert('Estará listo próximamente'); }}
                 className="absolute flex flex-col items-center group w-16 animate-popIn"
-                style={{ '--tx': '-70px', '--ty': '-70px' } as any}
+                style={{ '--tx': '-70px', '--ty': '-70px' } as React.CSSProperties}
               >
                 <div className="w-14 h-14 rounded-full bg-[#FFF156] text-black flex items-center justify-center border-2 border-black group-active:scale-95 transition-all">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

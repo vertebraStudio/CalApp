@@ -1,3 +1,4 @@
+import React from 'react'
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom'
 import { useAuth } from '@/context/AuthContext'
 import LoginPage from '@/pages/LoginPage'
@@ -7,6 +8,7 @@ import PlannerPage from '@/pages/PlannerPage'
 import ProfilePage from '@/pages/ProfilePage'
 import FridgePage from '@/pages/FridgePage'
 import Layout from '@/components/layout/Layout'
+import ScrollToTop from '../components/layout/ScrollToTop'
 
 function PrivateRoute() {
   const { session, loading } = useAuth()
@@ -24,7 +26,6 @@ function PublicRoute() {
   return session ? <Navigate to="/" replace /> : <Outlet />
 }
 
-import ScrollToTop from '../components/layout/ScrollToTop'
 
 export default function AppRouter() {
   return (

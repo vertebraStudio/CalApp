@@ -1,3 +1,4 @@
+import React from 'react'
 import type { Meal } from '@/types'
 
 interface MealCardProps {
