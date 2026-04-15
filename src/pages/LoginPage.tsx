@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import caratula from '@/assets/GorditoCaratula.png'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -23,7 +24,7 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col items-center justify-center p-6 animate-fadeIn relative z-10">
         <div className="text-center flex flex-col items-center">
           <img 
-            src="/GorditoCaratula.png" 
+            src={caratula} 
             alt="Gordito" 
             className="w-32 h-32 sm:w-40 sm:h-40 object-contain mb-8 animate-float"
           />
