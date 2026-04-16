@@ -41,6 +41,7 @@ export interface Meal {
   sugar: number
   salt: number
   meal_type: MealType
+  categoria?: string
   created_at: string
   // Base values for precision editing
   base_calories?: number

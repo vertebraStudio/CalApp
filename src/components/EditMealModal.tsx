@@ -22,15 +22,16 @@ export default function EditMealModal({ meal, onClose, onUpdate, isUpdating }: E
   const [editMealType, setEditMealType] = useState<MealType>(meal.meal_type)
 
   const friendlyMeasures = getFriendlyMeasures(
-    !!meal.is_liquid, 
+    !!meal.is_liquid,
     meal.friendly_measures,
-    meal.serving_unit
+    meal.serving_unit,
+    meal.categoria
   )
 
   useEffect(() => {
     // Calculate initial amount based on stored calories vs base_calories
     const ratio = meal.base_calories ? (meal.calories / meal.base_calories) : 1
-    
+
     if (meal.serving_size_g && Math.abs(ratio - (meal.serving_size_g / 100)) < 0.01) {
       setEditUnit('serving')
       setEditAmount(1)
@@ -38,7 +39,7 @@ export default function EditMealModal({ meal, onClose, onUpdate, isUpdating }: E
       setEditUnit('base')
       setEditAmount(Math.round(ratio * 100))
     }
-    
+
     setEditMealType(meal.meal_type)
   }, [meal])
 
@@ -55,9 +56,9 @@ export default function EditMealModal({ meal, onClose, onUpdate, isUpdating }: E
       serving_size_g: meal.serving_size_g,
       friendly_measures: meal.friendly_measures
     })
-    
+
     const ratio = weight / 100
-    
+
     let foodNameExt = ''
     if (editUnit === 'serving') {
       const uName = meal.serving_unit ? (editAmount === 1 ? meal.serving_unit : `${meal.serving_unit}s`) : 'porciones'
@@ -98,167 +99,210 @@ export default function EditMealModal({ meal, onClose, onUpdate, isUpdating }: E
   }
 
   const currentWeight = normalizeToWeight(editAmount, editUnit, {
-    is_liquid: meal.is_liquid,
+    is_liquid: !!meal.is_liquid,
     serving_size_g: meal.serving_size_g,
-    friendly_measures: meal.friendly_measures
+    friendly_measures: meal.friendly_measures,
+    categoria: meal.categoria
   })
   const currentRatio = currentWeight / 100
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4 pb-20 sm:pb-4 animate-fadeIn">
-      <div className="bg-white rounded-[2.5rem] w-full max-w-md shadow-2xl flex flex-col max-h-[82vh] overflow-hidden animate-slideUp">
-        
-        {/* Product Cover / Header */}
-        <div className="relative h-48 sm:h-56 shrink-0 group">
-          {editMealType === 'breakfast' && <div className="absolute inset-0 bg-orange-500/10" />}
-          {editMealType === 'lunch' && <div className="absolute inset-0 bg-green-500/10" />}
-          {editMealType === 'snack' && <div className="absolute inset-0 bg-pink-500/10" />}
-          {editMealType === 'dinner' && <div className="absolute inset-0 bg-blue-500/10" />}
+  const overlayStyles = {
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    backdropFilter: 'blur(4px)',
+    WebkitBackdropFilter: 'blur(4px)'
+  }
 
-          {meal.image_url ? (
-            <img src={meal.image_url} alt={meal.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
-              <span className="text-6xl">🍲</span>
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end justify-center">
+      <div
+        className="absolute inset-0 animate-fadeIn"
+        style={overlayStyles}
+        onClick={onClose}
+      />
+      <div className="bg-[#FFF156] rounded-t-[3rem] border-t-4 border-black w-full max-w-md shadow-2xl flex flex-col h-[90vh] sm:h-[85vh] overflow-hidden relative animate-slideUp">
+
+        {/* Drag Handle / Header */}
+        <div className="shrink-0 p-6 pt-4 pb-2">
+          <div className="w-12 h-1.5 bg-black/10 rounded-full mx-auto mb-6" />
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onClose}
+              className="shrink-0 w-12 h-12 bg-white border-2 border-black flex items-center justify-center rounded-[1.25rem] shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 transition-all"
+            >
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-black text-slate-800 text-xl leading-tight truncate">{meal.name}</h3>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Editar Registro</p>
             </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-white via-white/20 to-transparent" />
-          <button 
-            onClick={onClose} 
-            className="absolute top-4 right-4 p-2.5 bg-white/80 hover:bg-white backdrop-blur-md text-slate-400 hover:text-red-500 rounded-2xl shadow-lg transition-all active:scale-95"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
-          
-          <div className="absolute bottom-0 left-0 right-0 p-6">
-            <h3 className="font-black text-slate-800 text-xl leading-tight truncate">{meal.name}</h3>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Editar Registro</p>
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6 pt-0">
+        <div className="flex-1 overflow-y-auto px-6 pb-6 space-y-6">
           {/* Meal Type */}
-          <div className="grid grid-cols-4 gap-2">
+          <div className="flex gap-2 rounded-full justify-between mt-2">
             {MEAL_TYPES.map(t => (
               <button
                 key={t.id}
                 onClick={() => setEditMealType(t.id)}
-                className={`flex flex-col items-center gap-1.5 py-3 rounded-2xl transition-all border-2 ${editMealType === t.id ? 'bg-[#7B61FF]/5 border-[#7B61FF] text-[#7B61FF]' : 'bg-slate-50 border-transparent text-slate-400'}`}
+                className={`flex-1 py-2 rounded-[1rem] border-2 transition-all font-black text-[9px] uppercase tracking-wider ${editMealType === t.id ? 'bg-[#7B61FF] text-white border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]' : 'bg-white text-slate-400 border-black'}`}
               >
-                <span className="text-lg">{t.icon}</span>
-                <span className="text-[10px] font-black uppercase">{t.label}</span>
+                {t.label}
               </button>
             ))}
           </div>
 
-          <div className="bg-slate-50 rounded-3xl p-6 space-y-6">
-            
+          <div className="space-y-4">
             {/* friendly measures carousel */}
-            <div className="flex bg-slate-200/50 p-1 rounded-2xl overflow-x-auto no-scrollbar scroll-smooth">
-              <div className="flex gap-1 min-w-full">
+            <div>
+              <span className="text-[10px] font-black text-[#7B61FF] uppercase tracking-widest block mb-2 px-1">Selecciona Medida</span>
+              <div className="bg-white rounded-3xl border-2 border-black flex overflow-hidden shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
                 {meal.serving_size_g && (
-                  <button 
+                  <button
                     onClick={() => { setEditUnit('serving'); setEditAmount(1); }}
-                    className={`shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest font-black rounded-xl transition-all ${
-                      editUnit === 'serving' ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
-                    }`}
+                    className={`flex-1 py-3 text-[10px] uppercase tracking-widest font-black transition-all ${editUnit === 'serving' ? 'bg-[#7B61FF] text-white' : 'text-slate-400 hover:bg-slate-50'
+                      }`}
                   >
                     {meal.serving_unit || 'Porción'}
                   </button>
                 )}
                 {friendlyMeasures.map(m => (
-                  <button 
+                  <button
                     key={m.name}
                     onClick={() => { setEditUnit(m.name); setEditAmount(1); }}
-                    className={`shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest font-black rounded-xl transition-all ${
-                      editUnit === m.name ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
-                    }`}
+                    className={`flex-1 py-3 text-[10px] uppercase tracking-widest font-black transition-all border-l-2 border-black ${editUnit === m.name ? 'bg-[#7B61FF] text-white' : 'text-slate-400 hover:bg-slate-50'
+                      }`}
                   >
                     {m.name}
                   </button>
                 ))}
-                <button 
-                  onClick={() => { 
-                    setEditUnit('base'); 
-                    setEditAmount(meal.serving_size_g || 100); 
+                <button
+                  onClick={() => {
+                    setEditUnit('base');
+                    setEditAmount(meal.serving_size_g || 100);
                   }}
-                  className={`shrink-0 px-4 py-2 text-[10px] uppercase tracking-widest font-black rounded-xl transition-all ${
-                    editUnit === 'base' ? 'bg-white text-[#7B61FF] shadow-sm' : 'text-slate-400'
-                  }`}
+                  className={`flex-1 py-3 text-[10px] uppercase tracking-widest font-black transition-all border-l-2 border-black ${editUnit === 'base' ? 'bg-[#7B61FF] text-white' : 'text-slate-400 hover:bg-slate-50'
+                    }`}
                 >
-                  Exacto ({meal.base_unit || 'g'})
+                  Exacto
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex flex-col flex-1 min-w-0">
-                <span className="text-[14px] font-black text-slate-800 leading-tight">¿Cuánto has tomado?</span>
-                <span className="text-[9px] font-bold text-slate-400 uppercase mt-1">
-                  (Base: {meal.serving_size_g ? `${meal.serving_size_g}${meal.base_unit || 'g'}` : `100${meal.base_unit || 'g'}`})
-                </span>
-              </div>
-              <div className={`flex items-center gap-2 bg-white transition-all shadow-sm border border-slate-200 focus-within:border-[#7B61FF] ${editUnit === 'base' ? 'px-4 py-3 rounded-2xl' : 'px-2 py-1.5 rounded-2xl'}`}>
-                {editUnit !== 'base' && (
-                  <button
-                    onClick={() => setEditAmount((prev) => Math.max(0, prev - 1))}
-                    className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 rounded-xl transition-all hover:bg-[#7B61FF]/5 hover:text-[#7B61FF] active:scale-90"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M20 12H4" /></svg>
-                  </button>
-                )}
-                <div className="flex items-baseline gap-1">
-                  <input type="number" step="any" className={`bg-transparent text-right font-black text-[#7B61FF] outline-none ${editUnit === 'base' ? 'text-2xl w-20' : 'text-xl w-12 text-center'}`} value={editAmount} onChange={e => setEditAmount(Number(e.target.value) || 0)} />
-                  {editUnit === 'base' && <span className="text-xs font-bold text-slate-300 uppercase">{meal.base_unit || 'g'}</span>}
+            <div className="bg-white rounded-[32px] p-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden group">
+              <div className="flex items-center justify-between gap-6 relative z-10">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cantidad</span>
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    value={editAmount}
+                    onChange={(e) => setEditAmount(Number(e.target.value))}
+                    className="text-5xl font-black text-black bg-transparent outline-none w-24"
+                  />
+                  <span className="text-xs font-bold text-[#7B61FF] uppercase tracking-widest mt-1">
+                    {(() => {
+                      const singular: Record<string, string> = {
+                        'porciones': 'porción',
+                        'puñados': 'puñado', 'puñado': 'puñado',
+                        'cucharadas': 'cucharada', 'cucharada': 'cucharada',
+                        'vasos': 'vaso', 'vaso': 'vaso',
+                        'tazas': 'taza', 'taza': 'taza',
+                        'chorritos': 'chorrito', 'chorrito': 'chorrito',
+                        'latas': 'lata', 'lata': 'lata',
+                        'botellas': 'botella', 'botella': 'botella',
+                        'unidades': 'unidad', 'unidad': 'unidad',
+                        'rebanadas': 'rebanada', 'rebanada': 'rebanada',
+                        'piezas': 'pieza', 'pieza': 'pieza',
+                        'barritas': 'barrita', 'barrita': 'barrita',
+                      }
+                      const plural: Record<string, string> = {
+                        'porción': 'porciones',
+                        'puñado': 'puñados',
+                        'cucharada': 'cucharadas',
+                        'vaso': 'vasos',
+                        'taza': 'tazas',
+                        'chorrito': 'chorritos',
+                        'lata': 'latas',
+                        'botella': 'botellas',
+                        'unidad': 'unidades',
+                        'rebanada': 'rebanadas',
+                        'pieza': 'piezas',
+                        'barrita': 'barritas',
+                      }
+                      let rawUnit = editUnit === 'serving'
+                        ? (meal.serving_unit || 'porción')
+                        : (editUnit === 'base' ? (meal.base_unit || 'g') : editUnit)
+                      if (editUnit === 'base') return rawUnit
+                      const base = singular[rawUnit.toLowerCase()] || rawUnit
+                      return editAmount <= 1 ? base : (plural[base.toLowerCase()] || `${base}s`)
+                    })()}
+                  </span>
+                  <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest mt-0.5">
+                    (BASE: {meal.serving_size_g ? `${meal.serving_size_g}${meal.base_unit || 'g'}` : `100${meal.base_unit || 'g'}`})
+                  </span>
                 </div>
-                {editUnit !== 'base' && (
-                  <button
-                    onClick={() => setEditAmount((prev) => prev + 1)}
-                    className="w-10 h-10 flex items-center justify-center bg-slate-50 text-slate-400 rounded-xl transition-all hover:bg-[#7B61FF]/5 hover:text-[#7B61FF] active:scale-90"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
-                  </button>
-                )}
+
+                <div className="flex items-center gap-3 shrink-0 h-14">
+                  {editUnit !== 'base' && (
+                    <button
+                      onClick={() => setEditAmount((prev) => Math.max(0.5, prev - 0.5))}
+                      className="w-11 h-11 flex items-center justify-center bg-white text-slate-400 rounded-xl transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M18 12H6" /></svg>
+                    </button>
+                  )}
+                  {editUnit !== 'base' && (
+                    <button
+                      onClick={() => setEditAmount((prev) => prev + 1)}
+                      className="w-11 h-11 flex items-center justify-center bg-white text-[#7B61FF] rounded-xl transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 6v12m6-6H6" /></svg>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
-            <div className="bg-white px-6 py-4 rounded-2xl shadow-sm border border-slate-100 flex items-center justify-between">
-              <span className="text-sm font-bold text-slate-500">Energía Total</span>
-              <span className="text-2xl font-black text-[#5BC897]">
-                {Math.round((meal.base_calories || (meal.calories / (meal.serving_size_g || 100) * 100)) * currentRatio)} kcal
+            <div className="bg-white p-6 rounded-[24px] border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] flex flex-col items-center justify-center gap-1">
+              <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Energía Total</span>
+              <span className="text-4xl font-black text-black tracking-tighter">
+                {Math.round((meal.base_calories || (meal.calories / (meal.serving_size_g || 100) * 100)) * currentRatio)} <span className="text-2xl">kcal</span>
               </span>
             </div>
-          </div>
 
-          {editUnit !== 'base' && (
-            <div className="text-center -mt-2 mb-4">
-              <span className="text-[10px] font-bold text-slate-400">
-                Total: <strong className="text-slate-600">{currentWeight.toFixed(0)}{meal.base_unit || 'g'}</strong> ({editAmount} {editUnit === 'serving' ? (meal.serving_unit || 'porción') : editUnit}{editAmount !== 1 ? 's' : ''})
-              </span>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="bg-white rounded-[24px] p-4 border-2 border-black flex flex-col items-center justify-center">
+                <p className="text-[9px] font-black text-slate-800/40 uppercase tracking-widest leading-none mb-1">Proteínas</p>
+                <p className="text-xl font-black text-slate-800 leading-none">{((meal.base_protein || 0) * currentRatio).toFixed(1)}<span className="text-xs ml-0.5">g</span></p>
+              </div>
+              <div className="bg-white rounded-[24px] p-4 border-2 border-black flex flex-col items-center justify-center">
+                <p className="text-[9px] font-black text-slate-800/40 uppercase tracking-widest leading-none mb-1">Carbohid.</p>
+                <p className="text-xl font-black text-slate-800 leading-none">{((meal.base_carbs || 0) * currentRatio).toFixed(1)}<span className="text-xs ml-0.5">g</span></p>
+              </div>
+              <div className="bg-white rounded-[24px] p-4 border-2 border-black flex flex-col items-center justify-center">
+                <p className="text-[9px] font-black text-slate-800/40 uppercase tracking-widest leading-none mb-1">Grasas</p>
+                <p className="text-xl font-black text-slate-800 leading-none">{((meal.base_fats || 0) * currentRatio).toFixed(1)}<span className="text-xs ml-0.5">g</span></p>
+              </div>
             </div>
-          )}
 
-          {/* Macros Preview */}
-          <div className="grid grid-cols-3 gap-3">
-             <div className="bg-blue-50/50 rounded-2xl p-3 border border-blue-100/50 text-center">
-               <p className="text-[9px] font-bold text-blue-400 uppercase">Proteínas</p>
-               <p className="text-base font-black text-blue-600">{( (meal.base_protein || 0) * currentRatio).toFixed(1)}g</p>
-             </div>
-             <div className="bg-green-50/50 rounded-2xl p-3 border border-green-100/50 text-center">
-               <p className="text-[9px] font-bold text-green-400 uppercase">Carbos</p>
-               <p className="text-base font-black text-green-600">{( (meal.base_carbs || 0) * currentRatio).toFixed(1)}g</p>
-             </div>
-             <div className="bg-orange-50/50 rounded-2xl p-3 border border-orange-100/50 text-center">
-               <p className="text-[9px] font-bold text-orange-400 uppercase">Grasas</p>
-               <p className="text-base font-black text-orange-600">{( (meal.base_fats || 0) * currentRatio).toFixed(1)}g</p>
-             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-[#FCE7F3] rounded-[24px] p-4 border-2 border-black flex justify-between items-center px-5">
+                <span className="text-[10px] font-black text-pink-500 uppercase tracking-widest">Azúcares</span>
+                <span className="text-lg font-black text-pink-600 leading-none">{((meal.base_sugar ?? 0) * currentRatio).toFixed(1)}g</span>
+              </div>
+              <div className="bg-[#DBEAFE] rounded-[24px] p-4 border-2 border-black flex justify-between items-center px-5">
+                <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Sal</span>
+                <span className="text-lg font-black text-blue-700 leading-none">{((meal.base_salt ?? 0) * currentRatio).toFixed(2)}g</span>
+              </div>
+            </div>
+
+            <div className="pt-2 pb-2">
+              <button onClick={handleUpdate} disabled={isUpdating} className="w-full bg-[#7B61FF] text-white border-2 border-black rounded-[32px] py-5 text-xl font-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] transition-all active:shadow-none active:translate-x-1 active:translate-y-1 disabled:opacity-50">
+                {isUpdating ? 'Actualizando...' : 'Guardar Cambios'}
+              </button>
+            </div>
           </div>
-        </div>
-
-        <div className="p-6">
-          <button onClick={handleUpdate} disabled={isUpdating} className="w-full bg-[#7B61FF] hover:bg-[#684DEC] text-white rounded-3xl py-5 text-lg font-black shadow-xl shadow-purple-200 transition-all active:scale-[0.98] disabled:opacity-50">
-            {isUpdating ? 'Actualizando...' : 'Guardar Cambios 🚀'}
-          </button>
         </div>
       </div>
     </div>

@@ -19,23 +19,23 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-[#8060FF] selection:bg-white/20 selection:text-white relative overflow-hidden">
+    <div className="min-h-[100dvh] flex flex-col bg-[#8060FF] selection:bg-white/20 selection:text-white relative overflow-y-auto">
       {/* Top Section - Logo & Image */}
       <div className="flex-1 flex flex-col items-center justify-center p-6 animate-fadeIn relative z-10">
         <div className="text-center flex flex-col items-center">
           <img 
             src={caratula} 
             alt="Gordito" 
-            className="w-32 h-32 sm:w-40 sm:h-40 object-contain mb-8 animate-float"
+            className="w-24 h-24 sm:w-32 md:w-40 sm:h-32 md:h-40 object-contain mb-6 sm:mb-8 animate-float"
           />
-          <h1 className="text-5xl font-black text-white tracking-tighter mb-2 drop-shadow-sm">Gordito</h1>
-          <p className="text-white/70 font-bold text-xs uppercase tracking-widest">La vida no está hecha para contar calorías</p>
+          <h1 className="text-4xl sm:text-5xl font-black text-white tracking-tighter mb-2 drop-shadow-sm">Gordito</h1>
+          <p className="text-white/70 font-bold text-xs uppercase tracking-widest px-4">La vida no está hecha para contar calorías</p>
         </div>
       </div>
 
       {/* Bottom Section - Login Card */}
-      <div className="w-full max-w-md mx-auto animate-slideUp relative z-20">
-        <div className="bg-[#FFF156] rounded-t-[2.5rem] sm:rounded-[2.5rem] px-8 pt-10 pb-12 sm:pb-8 sm:mb-8 sm:p-8 shadow-[0_-20px_40px_-15px_rgba(0,0,0,0.1)] sm:shadow-2xl sm:shadow-black/10 space-y-8 relative border-t-2 sm:border-2 border-black">
+      <div className="w-full max-w-md mx-auto animate-slideUp relative z-20 sm:pb-8">
+        <div className="bg-[#FFF156] rounded-t-[2.5rem] sm:rounded-[2.5rem] px-8 pt-8 pb-10 sm:pb-8 sm:p-8 shadow-[0_-20px_40px_-15px_rgba(0,0,0,0.1)] sm:shadow-2xl sm:shadow-black/10 space-y-6 sm:space-y-8 relative border-t-2 sm:border-2 border-black">
 
           {/* Mobile Handle */}
           <div className="absolute top-4 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-black/10 rounded-full sm:hidden"></div>
@@ -45,7 +45,7 @@ export default function LoginPage() {
             <p className="text-sm font-bold text-slate-800/60">Entra para seguir tu progreso diario</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             <div className="space-y-2">
               <label htmlFor="login-email" className="text-[10px] font-black text-slate-900 uppercase tracking-widest pl-1">Email</label>
               <div className="relative group">
@@ -91,14 +91,14 @@ export default function LoginPage() {
             <button
               id="login-submit-btn"
               type="submit"
-              className="w-full bg-[#7B61FF] hover:bg-[#684DEC] text-white rounded-2xl py-4 text-base font-black border-2 border-black transition-all active:scale-[0.98] disabled:opacity-50"
+              className="w-full bg-[#7B61FF] hover:bg-[#684DEC] text-white rounded-2xl py-3.5 sm:py-4 text-base font-black border-2 border-black transition-all active:scale-[0.98] disabled:opacity-50"
               disabled={loading}
             >
               {loading ? 'Entrando...' : 'Iniciar Sesión'}
             </button>
           </form>
 
-          <p className="text-center text-slate-900 text-xs font-bold pt-4 uppercase tracking-widest">
+          <p className="text-center text-slate-900 text-xs font-bold pt-2 sm:pt-4 uppercase tracking-widest">
             ¿No tienes cuenta?{' '}
             <Link to="/register" className="text-[#7B61FF] hover:underline transition-all">
               Crear una ahora

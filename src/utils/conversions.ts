@@ -1,16 +1,45 @@
 import { FriendlyMeasure } from '@/types'
 
-export const DEFAULT_SOLID_MEASURES: FriendlyMeasure[] = [
-  { name: 'puñado', weight: 30 },
-  { name: 'cucharada', weight: 15 },
-]
-
-export const DEFAULT_LIQUID_MEASURES: FriendlyMeasure[] = [
-  { name: 'vaso', weight: 250 },
-  { name: 'taza', weight: 150 },
-  { name: 'chorrito', weight: 15 },
-  { name: 'cucharada', weight: 10 },
-]
+export const MEASURES_BY_CATEGORY: Record<string, FriendlyMeasure[]> = {
+  'Bebidas': [
+    { name: 'vaso', weight: 250 },
+    { name: 'taza', weight: 150 },
+    { name: 'lata', weight: 330 },
+    { name: 'chorrito', weight: 15 },
+  ],
+  'Lácteos': [
+    { name: 'vaso', weight: 250 },
+    { name: 'taza', weight: 150 },
+    { name: 'yogur', weight: 125 },
+    { name: 'cucharada', weight: 15 },
+  ],
+  'Frutos Secos': [
+    { name: 'puñado', weight: 30 },
+    { name: 'cucharada', weight: 15 },
+    { name: 'porción', weight: 30 },
+  ],
+  'Snacks': [
+    { name: 'puñado', weight: 30 },
+    { name: 'cucharada', weight: 15 },
+    { name: 'porción', weight: 30 },
+  ],
+  'Legumbres': [
+    { name: 'taza', weight: 200 },
+    { name: 'puñado', weight: 40 },
+    { name: 'cucharada', weight: 15 },
+  ],
+  'Cereales': [
+    { name: 'taza', weight: 200 },
+    { name: 'puñado', weight: 40 },
+    { name: 'cucharada', weight: 15 },
+  ],
+  'Carne': [
+    { name: 'filete', weight: 150 },
+  ],
+  'Pescado': [
+    { name: 'filete', weight: 150 },
+  ],
+}
 
 const CONTAINER_UNITS = [
   'lata', 'botella', 'brick', 'tercio', 'paquete', 
@@ -21,23 +50,29 @@ const CONTAINER_UNITS = [
 export function getFriendlyMeasures(
   isLiquid: boolean, 
   customMeasures?: FriendlyMeasure[], 
-  servingUnit?: string
+  servingUnit?: string,
+  category?: string
 ): FriendlyMeasure[] {
-  // If custom measures are explicitly provided in DB, use ONLY those (override defaults)
+  // 1. If custom measures are explicitly provided in DB, use ONLY those
   if (customMeasures && customMeasures.length > 0) {
     return customMeasures
   }
 
-  // If the product has a specific container/unit (e.g., 'lata', 'unidad'), 
-  // we suppress generic defaults to avoid noise.
+  // 2. If it has a specific unit (servingUnit), suppress generic defaults
   const hasSpecificUnit = servingUnit && CONTAINER_UNITS.includes(servingUnit.toLowerCase())
-  
   if (hasSpecificUnit) {
     return []
   }
 
-  // Otherwise, return global defaults
-  return isLiquid ? DEFAULT_LIQUID_MEASURES : DEFAULT_SOLID_MEASURES
+  // 3. Category-specific defaults
+  if (category && MEASURES_BY_CATEGORY[category]) {
+    return MEASURES_BY_CATEGORY[category]
+  }
+
+  // 4. Fallback defaults (if no category or category not matched)
+  return isLiquid 
+    ? MEASURES_BY_CATEGORY['Bebidas'].slice(0, 2) // vaso, taza fallback
+    : [] // No generic defaults for Verduras, Carne, Fruta, etc. as per user request
 }
 
 /**
@@ -52,13 +87,19 @@ export function normalizeToWeight(
   foodData: { 
     is_liquid?: boolean, 
     serving_size_g?: number, 
-    friendly_measures?: FriendlyMeasure[] 
+    friendly_measures?: FriendlyMeasure[],
+    categoria?: string
   }
 ): number {
   if (unit === 'base') return amount
   if (unit === 'serving') return amount * (foodData.serving_size_g || 100)
   
-  const measures = getFriendlyMeasures(!!foodData.is_liquid, foodData.friendly_measures)
+  const measures = getFriendlyMeasures(
+    !!foodData.is_liquid, 
+    foodData.friendly_measures, 
+    undefined, 
+    foodData.categoria
+  )
   const measure = measures.find(m => m.name.toLowerCase() === unit.toLowerCase())
   
   if (measure) return amount * measure.weight

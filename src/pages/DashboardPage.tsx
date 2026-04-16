@@ -401,15 +401,35 @@ export default function DashboardPage() {
                      </h3>
                    </div>
                    <div className="flex items-center gap-3">
-                     {groupMeals.length > 0 && (
-                       <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                         {groupMeals.reduce((s, m) => s + m.calories, 0)} kcal
-                       </span>
+                      {groupMeals.length > 0 && (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-slate-800 leading-none">
+                            {groupMeals.reduce((s, m) => s + m.calories, 0)}
+                          </span>
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                            kcal
+                          </span>
+                        </div>
+                      )}
+                     
+                     {!isCollapsed && (
+                       <button 
+                         onClick={(e) => {
+                           e.stopPropagation();
+                           window.dispatchEvent(new CustomEvent('open-manual-search', { detail: type.id }));
+                         }}
+                         className="w-10 h-10 rounded-xl bg-[#FFF156] text-black border-2 border-black flex items-center justify-center transition-all active:scale-95 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5 group"
+                       >
+                         <svg className="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" />
+                         </svg>
+                       </button>
                      )}
+
                      <div className={`p-2 rounded-xl border-[1.5px] border-black transition-all duration-300 ${
                        isCollapsed 
                          ? 'bg-[#7B61FF] text-white -rotate-180' 
-                         : 'bg-[#FFF156] text-black'
+                         : 'bg-white text-slate-400'
                      }`}>
                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
                      </div>

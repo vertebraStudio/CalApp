@@ -56,6 +56,17 @@ export default function Navbar() {
   
   // Shared data for the central smart form
   const [sharedData, setSharedData] = useState<any>(null)
+  const [isContribution, setIsContribution] = useState(false)
+  const [overrideMealType, setOverrideMealType] = useState<MealType | undefined>(undefined)
+
+  useEffect(() => {
+    const handleOpenSearch = (e: any) => {
+      setOverrideMealType(e.detail)
+      setShowManual(true)
+    }
+    window.addEventListener('open-manual-search', handleOpenSearch)
+    return () => window.removeEventListener('open-manual-search', handleOpenSearch)
+  }, [])
 
   useEffect(() => {
     const handleOpenFridge = () => setShowFridgeAdd(true)
@@ -102,7 +113,7 @@ export default function Navbar() {
             {/* Slot 3: Contribuir (Manual Entry) */}
             <div className="flex justify-center">
               <button 
-                onClick={() => { setShowDirect(true); setSharedData(null); }}
+                onClick={() => { setShowDirect(true); setSharedData(null); setIsContribution(true); }}
                 className="flex flex-col items-center gap-1 transition-all active:scale-95 group"
               >
                 <div className="relative">
@@ -194,13 +205,15 @@ export default function Navbar() {
       )}
 
       {/* global Modals Triggered by FAB */}
-      {showUpload && <ImageUpload onClose={() => setShowUpload(false)} onAnalysisComplete={(data: any) => { setShowUpload(false); setSharedData(data); setShowDirect(true); }} />}
-      {showVoice && <VoiceTextEntry onClose={() => setShowVoice(false)} onAnalysisComplete={(data: any) => { setShowVoice(false); setSharedData(data); setShowDirect(true); }} />}
+      {showUpload && <ImageUpload onClose={() => setShowUpload(false)} onAnalysisComplete={(data: any) => { setShowUpload(false); setSharedData(data); setIsContribution(false); setShowDirect(true); }} />}
+      {showVoice && <VoiceTextEntry onClose={() => setShowVoice(false)} onAnalysisComplete={(data: any) => { setShowVoice(false); setSharedData(data); setIsContribution(false); setShowDirect(true); }} />}
       {showManual && (
         <ManualSearch 
-          onClose={() => setShowManual(false)} 
+          initialMealType={overrideMealType}
+          onClose={() => { setShowManual(false); setOverrideMealType(undefined); }} 
           onFoodSelected={async (data: any) => { 
             setShowManual(false); 
+            setOverrideMealType(undefined);
             await saveMeal(data);
           }} 
           onEditFood={(food) => {
@@ -223,6 +236,7 @@ export default function Navbar() {
               serving_unit: food.serving_unit,
               base_unit: food.base_unit
             });
+            setIsContribution(false);
             setShowDirect(true);
           }}
         />
@@ -231,6 +245,13 @@ export default function Navbar() {
         initialData={sharedData} 
         onClose={() => { setShowDirect(false); setSharedData(null); }} 
         onSuccess={async (_foodId, diaryEntry) => {
+          if (isContribution) {
+            setShowDirect(false)
+            setSharedData(null)
+            setIsContribution(false)
+            return
+          }
+
           // Calculate Default Meal Type based on time (duplicated logic from ManualSearch for now)
           const hour = new Date().getHours()
           let defaultType: 'breakfast' | 'lunch' | 'snack' | 'dinner' = 'lunch'

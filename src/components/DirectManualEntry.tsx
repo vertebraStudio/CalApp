@@ -132,14 +132,15 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
       setSalt(initialData.macros?.salt?.toString() || '')
       setImageUrl(initialData.image_url || null)
 
-      if (initialData.serving_size_g) {
-        setAmount('1')
-        setUnit(initialData.serving_unit || 'ración')
-        setServingWeight(initialData.serving_size_g.toString())
-      } else {
-        setAmount('100')
-        setUnit(initialData.base_unit || 'g')
-      }
+        const isServingUnit = ['ración', 'unidad', 'filete', 'porción', 'vaso', 'lata'].includes(initialData.serving_unit || '')
+        if (isServingUnit) {
+          setAmount('1')
+          setUnit(initialData.serving_unit || 'ración')
+          setServingWeight(initialData.serving_size_g.toString())
+        } else {
+          setAmount('100')
+          setUnit(initialData.base_unit || 'g')
+        }
 
       // If editing existing, set base values for auto-recalc
       if (initialData.id) {
@@ -320,7 +321,7 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
       setIsSaving(true)
       // Calculate values per 100g based on the reference portion
       const numAmount = parseFloat(amount) || 100
-      const isServingUnit = ['ración', 'unidad', 'vaso', 'lata'].includes(unit)
+      const isServingUnit = ['ración', 'unidad', 'filete', 'porción', 'vaso', 'lata'].includes(unit)
       const sWeight = isServingUnit ? parseFloat(servingWeight) || 0 : 0
 
       const totalWeightGrams = isServingUnit ? (numAmount * sWeight) : numAmount
@@ -598,7 +599,7 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
               </button>
 
               {/* Porción de Referencia & Calorías */}
-              <div className="bg-white rounded-[40px] p-6 space-y-6 border-2 border-black/5">
+              <div className="bg-white rounded-[40px] p-6 space-y-6 border-2 border-black">
                 <div className="flex items-center justify-between">
                   <span className="text-[10px] font-black text-[#7B61FF] uppercase tracking-widest">Porción a Registrar</span>
                   <div className="px-2 py-0.5 bg-[#7B61FF] text-white text-[8px] font-black rounded-full border-2 border-black">OBLIGATORIO</div>
@@ -657,13 +658,15 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
                         <option value="ml">Mililitros (ml)</option>
                         <option value="ración">Ración</option>
                         <option value="unidad">Unidad</option>
+                        <option value="filete">Filete</option>
+                        <option value="porción">Porción</option>
                         <option value="vaso">Vaso</option>
                         <option value="lata">Lata</option>
                       </select>
                     </div>
                   </div>
 
-                  {['ración', 'unidad', 'vaso', 'lata'].includes(unit) && (
+                  {['ración', 'unidad', 'filete', 'porción', 'vaso', 'lata'].includes(unit) && (
                     <div className="bg-[#FFF156]/20 p-4 rounded-xl border-2 border-[#FFF156] flex flex-col">
                       <span className="text-[9px] font-black text-[#5A43B2] uppercase tracking-widest mb-2">Equivalencia (Peso de 1 {unit})</span>
                       <div className="flex items-center gap-2">
