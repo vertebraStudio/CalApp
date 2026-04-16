@@ -233,42 +233,12 @@ export default function AddToFridge({ onClose }: AddToFridgeProps) {
 
           <div className="flex-1 overflow-y-auto p-6 space-y-4">
 
-            {/* Unit Toggle */}
-            <div className="space-y-3">
-              <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-1">Selecciona Medida</h4>
-              <div className="flex bg-slate-100 p-1 rounded-[24px] border-2 border-black h-12">
-                <div className="flex w-full">
-                  <button
-                    onClick={() => { setUnit('uds'); setAmount(1); }}
-                    className={`flex-1 text-[10px] uppercase tracking-widest font-black rounded-[20px] transition-all ${unit === 'uds' ? 'bg-[#7B61FF] text-white border-2 border-black' : 'text-slate-400'
-                      }`}
-                  >
-                    Uds
-                  </button>
-                  <button
-                    onClick={() => { setUnit('g'); setAmount(100); }}
-                    className={`flex-1 text-[10px] uppercase tracking-widest font-black rounded-[20px] transition-all ${unit === 'g' ? 'bg-[#7B61FF] text-white border-2 border-black' : 'text-slate-400'
-                      }`}
-                  >
-                    Gramos (g)
-                  </button>
-                  <button
-                    onClick={() => { setUnit('ml'); setAmount(100); }}
-                    className={`flex-1 text-[10px] uppercase tracking-widest font-black rounded-[20px] transition-all ${unit === 'ml' ? 'bg-[#7B61FF] text-white border-2 border-black' : 'text-slate-400'
-                      }`}
-                  >
-                    Mililitros (ml)
-                  </button>
-                </div>
-              </div>
-            </div>
-
             {/* Quantity */}
             <div className="bg-white rounded-[32px] p-8 border-2 border-black shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] relative overflow-hidden">
               <div className="flex items-center justify-between gap-6 relative z-10">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    {unit === 'uds' ? '¿Cuántas unidades?' : unit === 'g' ? '¿Cuántos gramos?' : '¿Cuántos mililitros?'}
+                    ¿Cuántas unidades?
                   </span>
                   <input
                     type="number"
@@ -278,12 +248,12 @@ export default function AddToFridge({ onClose }: AddToFridgeProps) {
                     className="text-5xl font-black text-black bg-transparent outline-none w-24"
                   />
                   <span className="text-xs font-bold text-[#7B61FF] uppercase tracking-widest mt-1">
-                    {unit === 'uds' ? 'envases / piezas 📦' : unit === 'g' ? 'peso total (g) ⚖️' : 'volumen total (ml) 💧'}
+                    envases / piezas 📦
                   </span>
                 </div>
                 <div className="flex flex-col items-center gap-2 shrink-0">
                   <button
-                    onClick={() => setAmount(prev => prev + (unit === 'uds' ? 1 : 100))}
+                    onClick={() => setAmount(prev => prev + 1)}
                     className="w-11 h-11 flex items-center justify-center bg-white text-[#7B61FF] rounded-xl transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -291,7 +261,7 @@ export default function AddToFridge({ onClose }: AddToFridgeProps) {
                     </svg>
                   </button>
                   <button
-                    onClick={() => setAmount(prev => Math.max(unit === 'uds' ? 1 : 0, prev - (unit === 'uds' ? 1 : 100)))}
+                    onClick={() => setAmount(prev => Math.max(1, prev - 1))}
                     className="w-11 h-11 flex items-center justify-center bg-white text-slate-400 rounded-xl transition-all active:scale-95 border-2 border-black shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:shadow-none active:translate-x-0.5 active:translate-y-0.5"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -314,7 +284,7 @@ export default function AddToFridge({ onClose }: AddToFridgeProps) {
                 type="date"
                 value={expirationDate}
                 onChange={e => setExpirationDate(e.target.value)}
-                className="w-full bg-slate-50 p-4 rounded-2xl font-bold text-slate-600 border-2 border-black focus:border-[#7B61FF] outline-none transition-all cursor-pointer"
+                className="w-full bg-slate-50 p-4 rounded-2xl font-bold text-slate-600 border-2 border-black focus:border-[#7B61FF] outline-none transition-all cursor-pointer appearance-none box-border"
               />
             </div>
           </div>
