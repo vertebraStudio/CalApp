@@ -37,7 +37,7 @@ export default function AddToFridge({ onClose }: AddToFridgeProps) {
 
   // Inventory specific state
   const [amount, setAmount] = useState<number>(1)
-  const [unit, setUnit] = useState<string>('uds')
+  const [unit] = useState<string>('uds')
   const [expirationDate, setExpirationDate] = useState<string>('')
   const [showManual, setShowManual] = useState(false)
 
