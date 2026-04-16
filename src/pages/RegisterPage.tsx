@@ -15,7 +15,13 @@ export default function RegisterPage() {
     setLoading(true)
     setError(null)
 
-    const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
+    const { data, error: signUpError } = await supabase.auth.signUp({ 
+      email, 
+      password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      }
+    })
     if (signUpError) {
       setError(signUpError.message)
       setLoading(false)
