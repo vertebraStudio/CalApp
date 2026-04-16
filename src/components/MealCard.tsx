@@ -7,14 +7,6 @@ interface MealCardProps {
   onClick?: () => void
 }
 
-function MacroPill({ label, value, color }: { label: string; value: number; color: string }) {
-  return (
-    <div className={`flex flex-col items-center px-3 py-1 rounded-lg ${color} bg-opacity-10`}>
-      <span className={`text-[10px] font-bold ${color.replace('bg-', 'text-')}`}>{value}g</span>
-      <span className={`text-[8px] uppercase tracking-tighter opacity-70 ${color.replace('bg-', 'text-')}`}>{label}</span>
-    </div>
-  )
-}
 
 const CATEGORIES = [
   { id: 'Verduras', icon: '🥦' },

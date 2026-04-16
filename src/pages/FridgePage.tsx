@@ -26,11 +26,6 @@ function FridgeCard({ item, onUpdateStock }: {
   const stock = item.stock_amount
   const unit = item.stock_unit
 
-  // Expiration logic
-  const isExpired = item.expiration_date ? new Date(item.expiration_date) < new Date() : false
-  const expDateStr = item.expiration_date
-    ? new Date(item.expiration_date).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: '2-digit' })
-    : null
 
   return (
     <div className={`relative bg-white rounded-2xl border-2 border-black shadow-sm transition-all ${stock <= 0 ? 'border-red-400' : 'border-black'}`}>

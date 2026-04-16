@@ -173,6 +173,7 @@ export default function ManualSearch({ onClose, onFoodSelected, onEditFood, init
   useEffect(() => {
     if (!user) return
     async function loadRecent() {
+      if (!user) return
       // 1. Obtener últimas ingestas
       const { data: mealsData, error } = await supabase
         .from('meals')

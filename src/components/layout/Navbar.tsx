@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
+import { MealType } from '@/types'
 import ManualSearch from '../ManualSearch'
 import ImageUpload from '../ImageUpload'
 import VoiceTextEntry from '../VoiceTextEntry'

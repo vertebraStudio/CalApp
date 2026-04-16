@@ -136,7 +136,7 @@ export default function DirectManualEntry({ onClose, onSuccess, initialData }: D
         if (isServingUnit) {
           setAmount('1')
           setUnit(initialData.serving_unit || 'ración')
-          setServingWeight(initialData.serving_size_g.toString())
+          setServingWeight(initialData.serving_size_g?.toString() || '')
         } else {
           setAmount('100')
           setUnit(initialData.base_unit || 'g')
